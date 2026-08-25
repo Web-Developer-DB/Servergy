@@ -68,7 +68,36 @@ sudo systemctl enable --now ssh
 sudo systemctl status ssh
 ~~~
 
-## 3. Engen Ausschalt-Helper erstellen
+## 3. Ausschalt-Unit und engen Helper erstellen
+
+Die Unit nimmt den Auftrag zuerst entgegen und wartet kurz, bevor der Rechner
+wirklich ausgeschaltet wird. Dadurch kann Servergy den bestätigten Auftrag noch
+über SSH empfangen, statt einen gelungenen Shutdown wegen einer früh getrennten
+Netzwerkverbindung fälschlich als Fehler zu melden.
+
+Erstelle die Unit als root:
+
+~~~bash
+sudo install -o root -g root -m 0644 /dev/stdin /etc/systemd/system/servergy-poweroff.service
+~~~
+
+Füge diesen Inhalt ein und beende die Eingabe mit Ctrl-D:
+
+~~~ini
+[Unit]
+Description=Power off this host after a Servergy request
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/sleep 2
+ExecStart=/usr/bin/systemctl poweroff --no-block
+~~~
+
+Aktiviere die geänderte Unit-Datei:
+
+~~~bash
+sudo systemctl daemon-reload
+~~~
 
 Erstelle genau diesen Helper als root:
 
@@ -81,7 +110,9 @@ Eingabe mit Ctrl-D:
 
 ~~~sh
 #!/bin/sh
-exec /sbin/shutdown -h now
+set -eu
+/usr/bin/systemctl start --no-block servergy-poweroff.service
+printf '%s\n' 'servergy-poweroff-accepted'
 ~~~
 
 Prüfe den Inhalt:
@@ -131,8 +162,9 @@ Dann den eingeschränkten Helper:
 ssh servergy@<server-ip> 'sudo -n /usr/local/sbin/servergy-poweroff'
 ~~~
 
-Dieser Befehl fährt den Server wirklich herunter. Nach dem Wiederstart kann
-der Host-Key-Fingerprint angezeigt werden:
+Dieser Befehl bestätigt zuerst `servergy-poweroff-accepted` und fährt den
+Server anschließend wirklich herunter. Nach dem Wiederstart kann der
+Host-Key-Fingerprint angezeigt werden:
 
 ~~~bash
 ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256
@@ -143,6 +175,11 @@ Fingerprint. Akzeptiere keinen unbekannten oder geänderten Key ohne diesen
 Vergleich.
 
 ## 6. Daten in Servergy eintragen
+
+1. Starte den Server für die Ersteinrichtung und wähle in Servergy
+   **„Server im Netzwerk suchen“** oder trage seine Adresse manuell ein.
+2. Prüfe die SSH-Verbindung und vergleiche den angezeigten SHA-256-Fingerprint.
+3. Richte Wake-on-LAN danach ein oder überspringe den Schritt zunächst.
 
 - **Hostname oder IP-Adresse:** lokale IP oder fester lokaler DNS-Name
 - **SSH-Port:** normalerweise 22

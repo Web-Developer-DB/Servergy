@@ -31,7 +31,9 @@ android {
         applicationId = "dev.servergy.servergy"
         // Android 12 (API 31) is Servergy's supported minimum.
         minSdk = 31
-        targetSdk = flutter.targetSdkVersion
+        // Android 17 requires an explicit runtime grant for LAN access. The
+        // app handles that permission before SSH, WOL, and discovery actions.
+        targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
