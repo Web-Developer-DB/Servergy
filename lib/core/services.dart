@@ -34,11 +34,13 @@ class LocalNetworkAccess {
   }
 
   Future<void> acquireMulticastLock() async {
-    if (Platform.isAndroid) await _channel.invokeMethod<void>('acquireMulticast');
+    if (Platform.isAndroid)
+      await _channel.invokeMethod<void>('acquireMulticast');
   }
 
   Future<void> releaseMulticastLock() async {
-    if (Platform.isAndroid) await _channel.invokeMethod<void>('releaseMulticast');
+    if (Platform.isAndroid)
+      await _channel.invokeMethod<void>('releaseMulticast');
   }
 }
 
@@ -66,7 +68,8 @@ class HostKeyTrust {
       final scope = value['scope'] as String?;
       final algorithm = value['algorithm'] as String?;
       final fingerprint = value['fingerprint'] as String?;
-      if (scope == null || algorithm == null || fingerprint == null) return null;
+      if (scope == null || algorithm == null || fingerprint == null)
+        return null;
       if (!fingerprint.startsWith('SHA256:')) return null;
       return HostKeyTrust(
         scope: scope,
@@ -128,11 +131,12 @@ class SettingsStore implements ProfileStore {
   Future<void> updatePassword(SecretUpdate update) => switch (update.kind) {
     SecretUpdateKind.keep => Future<void>.value(),
     SecretUpdateKind.delete => _secrets.delete(key: _passwordKey),
-    SecretUpdateKind.replace => update.value == null || update.value!.isEmpty
-        ? Future<void>.error(
-            const ServergyError('Das SSH-Passwort darf nicht leer sein.'),
-          )
-        : _secrets.write(key: _passwordKey, value: update.value!),
+    SecretUpdateKind.replace =>
+      update.value == null || update.value!.isEmpty
+          ? Future<void>.error(
+              const ServergyError('Das SSH-Passwort darf nicht leer sein.'),
+            )
+          : _secrets.write(key: _passwordKey, value: update.value!),
   };
 
   @override
@@ -389,12 +393,10 @@ class DiscoveryService implements DiscoveryGateway {
     String host,
     int port,
     bool Function() cancelled,
-    void Function(DiscoveredServer) emit,
-    {
+    void Function(DiscoveredServer) emit, {
     required Set<DiscoverySource> sources,
     String? serviceName,
-  }
-  ) async {
+  }) async {
     if (cancelled()) return;
     Socket? socket;
     try {
@@ -403,19 +405,23 @@ class DiscoveryService implements DiscoveryGateway {
         port,
         timeout: const Duration(milliseconds: 350),
       );
-      final chunk = await socket.first.timeout(const Duration(milliseconds: 500));
+      final chunk = await socket.first.timeout(
+        const Duration(milliseconds: 500),
+      );
       final banner = ascii
           .decode(chunk, allowInvalid: true)
           .split(RegExp(r'\r?\n'))
           .first;
       if (!banner.startsWith('SSH-') || cancelled()) return;
-      emit(DiscoveredServer(
-        host: host,
-        port: port,
-        banner: banner,
-        serviceName: serviceName,
-        sources: sources,
-      ));
+      emit(
+        DiscoveredServer(
+          host: host,
+          port: port,
+          banner: banner,
+          serviceName: serviceName,
+          sources: sources,
+        ),
+      );
     } on SocketException {
       // Closed or filtered ports are expected during a local search.
     } on TimeoutException {
@@ -439,18 +445,29 @@ class DiscoveryService implements DiscoveryGateway {
           .lookup<PtrResourceRecord>(
             ResourceRecordQuery.serverPointer('_ssh._tcp.local'),
           )
-          .timeout(const Duration(seconds: 2), onTimeout: (sink) => sink.close());
+          .timeout(
+            const Duration(seconds: 2),
+            onTimeout: (sink) => sink.close(),
+          );
       await for (final ptr in ptrs) {
         if (cancelled()) return;
         final services = client
-            .lookup<SrvResourceRecord>(ResourceRecordQuery.service(ptr.domainName))
-            .timeout(const Duration(milliseconds: 500), onTimeout: (sink) => sink.close());
+            .lookup<SrvResourceRecord>(
+              ResourceRecordQuery.service(ptr.domainName),
+            )
+            .timeout(
+              const Duration(milliseconds: 500),
+              onTimeout: (sink) => sink.close(),
+            );
         await for (final service in services) {
           final addresses = client
               .lookup<IPAddressResourceRecord>(
                 ResourceRecordQuery.addressIPv4(service.target),
               )
-              .timeout(const Duration(milliseconds: 500), onTimeout: (sink) => sink.close());
+              .timeout(
+                const Duration(milliseconds: 500),
+                onTimeout: (sink) => sink.close(),
+              );
           await for (final address in addresses) {
             if (cancelled()) return;
             await _probeSsh(
@@ -548,7 +565,8 @@ class SshService implements SshGateway {
         'sudo -n /usr/local/sbin/servergy-poweroff',
       );
       final acknowledgement = utf8.decode(result.stdout).trim();
-      if (result.exitCode != 0 || acknowledgement != 'servergy-poweroff-accepted') {
+      if (result.exitCode != 0 ||
+          acknowledgement != 'servergy-poweroff-accepted') {
         throw const ServergyError(
           'Der Server hat den Ausschaltbefehl nicht bestätigt. Prüfe die sudoers-Regel und den Servergy-Helper.',
           code: 'poweroff_not_acknowledged',

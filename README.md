@@ -1,75 +1,140 @@
-# Servergy
+# Servergy Alpha
 
-**Servergy** startet und stoppt einen Homeserver bei Bedarf: Start über
-Wake-on-LAN, sicheres Herunterfahren über SSH. So läuft der Server nicht
-unnötig und bleibt mit einem Knopfdruck verfügbar.
+Servergy ist eine lokale Flutter-App für genau einen Homeserver. Sie kann
+einen laufenden Server über SSH prüfen, ihn kontrolliert herunterfahren und
+ihn später über Wake-on-LAN wieder starten. Die App arbeitet ausschließlich im
+Vordergrund; es gibt keinen Hintergrunddienst, keine Cloud und keine
+Telemetrie.
 
-Der aktuelle Entwicklungsstand enthält einen nutzbaren ersten End-to-End-Stand
-für Android, Linux und Windows:
+> **Status: Alpha** — Der aktuelle Stand ist für Entwicklung und reale
+> Funktionstests gedacht. Vor einer öffentlichen oder produktiven Verteilung
+> müssen die in [docs/alpha.md](docs/alpha.md) genannten manuellen Tests,
+> Signaturen und Release-Gates abgeschlossen werden.
 
-- geführtes Homeserver-Onboarding mit Host, SSH-Benutzer, MAC- und Broadcast-Adresse
-- Wake-on-LAN mit drei Magic Packets
-- Erreichbarkeitsprüfung über den SSH-Port
-- SSH-Verbindungstest und kontrolliertes Herunterfahren
-- importierbare SSH-Privatschlüssel mit Passwort-Fallback
-- sichere Passwort- und Schlüsselablage über den jeweiligen System-Schlüsselspeicher
-- SSH-Host-Key-Prüfung mit expliziter Bestätigung beim ersten Kontakt
-- abbrechbare Start- und Ausschaltvorgänge sowie redigiertes lokales Diagnoseprotokoll
+## Was die Alpha kann
 
-## Voraussetzungen
+- geführte Einrichtung für einen Homeserver auf Android, Linux und Windows
+- Suche nach möglichen SSH-Servern im aktuellen lokalen IPv4-Netz
+- optionale mDNS-Suche nach `_ssh._tcp.local` und begrenzter SSH-Port-Scan
+- manuelle Eingabe von Hostname, IP-Adresse, SSH-Port und Benutzername
+- SSH-Schlüssel-Anmeldung mit OpenSSH-, RSA- und EC-Privatschlüsseln
+- Passwort-Anmeldung mit sicherer Speicherung im Betriebssystem-Schlüsselspeicher
+- Passphrase-Abfrage für verschlüsselte Schlüssel, ohne die Passphrase zu speichern
+- SSH-Host-Key-Fingerprint mit manueller Erstbestätigung und Änderungsblockade
+- Wake-on-LAN mit drei Magic Packets und anschließendem Erreichbarkeits-Polling
+- kontrolliertes Ausschalten über einen festen, restriktiven sudoers-Helper
+- abbrechbare Start-, Such- und Ausschaltvorgänge
+- lokales, begrenztes und redigiertes Diagnoseprotokoll
+- helle und dunkle Material-3-Oberfläche mit responsivem Onboarding
 
-Servergy verwaltet bewusst **genau einen** Homeserver. Der Server muss über das
-lokale Netzwerk oder ein bereits eingerichtetes VPN erreichbar sein, wenn er
-läuft. Für das Starten müssen
-Wake-on-LAN im BIOS/UEFI und im Betriebssystem beziehungsweise im
-Netzwerkadapter aktiviert sein.
+## Bewusste Grenzen
 
-Wake-on-LAN benötigt einen Broadcast-Pfad; viele VPNs leiten Broadcasts nicht
-weiter. In diesem Fall funktioniert die SSH-Steuerung über VPN, das Einschalten
-aber nur im Heimnetz oder über einen selbst betriebenen WOL-Relay.
+Servergy verwaltet in Version 1 genau einen Server. Der Server muss für die
+Einrichtung eingeschaltet und per SSH erreichbar sein. Der Netzwerksucher
+findet nur mögliche SSH-Ziele im aktuellen lokalen LAN; er kann keinen
+ausgeschalteten Server und keine MAC-Adresse zuverlässig entdecken. Ein Ziel
+über VPN wird manuell eingetragen, weil lokale IPv4-Suche und Broadcasts über
+VPN nicht allgemein funktionieren.
 
-Für das sichere Ausschalten verlangt die App nicht einen frei wählbaren
-sudo-Befehl. Stattdessen führt sie ausschließlich
-/usr/local/sbin/servergy-poweroff aus. Die einmalige Servereinrichtung steht
-in [docs/server-setup.md](docs/server-setup.md).
+Wake-on-LAN muss auf Mainboard, Serverbetriebssystem, Netzwerkkarte und
+gegebenenfalls Router aktiviert sein. Die zuverlässigste Variante ist ein
+kabelgebundener Serveradapter. Die vollständige Servereinrichtung steht in
+[docs/server-setup.md](docs/server-setup.md).
 
-## Lokale Entwicklung
+## Schnellstart für Entwickler
 
-1. Flutter SDK installieren und ein Gerät oder Emulator verbinden.
-2. Abhängigkeiten laden: flutter pub get
-3. Prüfen: flutter analyze und flutter test
-4. Starten: flutter run
+Voraussetzungen:
 
-Auf Linux benötigt flutter_secure_storage zur Laufzeit die Bibliothek
-libsecret. Unter Debian/Ubuntu: sudo apt install libsecret-1-dev
-libsecret-1-0.
+- Flutter/Dart passend zur SDK-Angabe in `pubspec.yaml`
+- Android Studio/JDK für Android-Builds
+- Linux: `libsecret-1-dev` und `libsecret-1-0` für `flutter_secure_storage`
+- ein Android-Gerät/Emulator, Linux-Desktop oder Windows-Entwicklungsrechner
 
-## Plattformen
+Im Repository ausführen:
 
-| Plattform | Paket/Start | Hinweis |
-| --- | --- | --- |
-| Android | flutter build apk | Android 12 (API 31) oder neuer; Build mit Android API 37; zum Starten wird lokaler Netzwerkzugriff benötigt. |
-| Ubuntu/Linux | flutter build linux | Benötigt libsecret-1 für gespeicherte Geheimnisse. |
-| Windows | flutter build windows | Der Build erfolgt auf einem Windows-Rechner. |
+~~~bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+~~~
 
-## Sicherheitsprinzipien
+Plattform-Builds:
 
-- Passwörter liegen nie in shared_preferences, Logs oder der Profil-JSON.
-- Das Passwort kann ausschließlich auf ausdrücklichen Wunsch gespeichert
-  werden; sonst lebt es nur für die aktuelle Aktion im Speicher.
-- Ein unbekannter SSH-Host-Key muss bestätigt werden. Ein geänderter Key wird
-  blockiert.
-- Die Key-Vertrauensentscheidung ist an Host und SSH-Port gebunden.
-- Der Ausschaltbefehl ist auf einen festen Server-Helper beschränkt.
-- Die App nutzt keinen Hintergrunddienst, keine Cloud und keine Telemetrie.
-- Das exportierbare Diagnoseprotokoll enthält keine Zugangsdaten, Schlüssel,
-  Benutzernamen, Hostadressen oder MAC-Adressen.
+~~~bash
+flutter build apk --debug
+flutter build linux --debug
+flutter build windows --debug
+~~~
 
-Details zur lokalen Datenverarbeitung stehen in [docs/privacy.md](docs/privacy.md).
+Eine ausführliche Entwicklungsroutine mit Emulator- und Realgerät-Tests steht
+in [docs/development.md](docs/development.md).
 
-## Status
+## Bedienablauf
 
-Der Funktionsumfang ist für einen ersten Release vorbereitet. Vor einem echten
-Release müssen die Checkliste in [docs/release-checklist.md](docs/release-checklist.md)
-abgearbeitet, echte Plattformtests durchgeführt und die GitHub-Signing-Secrets
-hinterlegt werden.
+1. **Netzwerkgrenze:** Der Server ist eingeschaltet; Heimnetz und VPN-Hinweis
+   werden erklärt.
+2. **Server finden:** Die Suche prüft nur den erkannten lokalen Bereich. Ein
+   Treffer wird erst nach einem SSH-Test und Host-Key-Vergleich vertrauenswürdig.
+3. **SSH-Zugang:** Entweder importierter Schlüssel oder Passwort-Modus.
+4. **Verbindung prüfen:** Der SSH-Test läuft vor dem Speichern neuer Zugangsdaten.
+5. **Server später starten:** Wake-on-LAN kann jetzt konfiguriert oder später in
+   den Einstellungen ergänzt werden.
+
+Im Passwort-Modus wird ein nicht leeres SSH-Passwort nach erfolgreicher Prüfung
+verschlüsselt gespeichert. In den Einstellungen wird es nie angezeigt; ein
+leeres Feld bedeutet bei einem vorhandenen Profil „bestehendes Passwort
+beibehalten“. Beim Wechsel auf Schlüssel-Anmeldung wird das Passwort gelöscht.
+
+## Sicherheitsmodell
+
+Nicht geheime Profildaten liegen in `shared_preferences`. Passwörter,
+Privatschlüssel und Host-Key-Vertrauen liegen ausschließlich in
+`flutter_secure_storage`. Passphrasen werden nur für die laufende Verbindung
+verwendet. Der SSH-Fingerprint wird pro Host und Port gebunden; ein anderer
+Fingerprint blockiert die Verbindung.
+
+Der Shutdown ist kein frei formulierbarer Shell-Befehl. Die App ruft konstant
+`sudo -n /usr/local/sbin/servergy-poweroff` auf. Der root-eigene Helper startet
+eine feste systemd-Unit, bestätigt den angenommenen Auftrag und löst danach den
+Poweroff aus. Die erlaubte sudoers-Regel und die Unit stehen in der
+Serveranleitung.
+
+Diagnoseexporte enthalten nur Zeitpunkt, Aktion, Ergebnis, Fehlercode und
+Dauer. Es werden keine Passwörter, Schlüssel, Benutzernamen, vollständigen
+Hostadressen oder MAC-Adressen exportiert. Siehe
+[docs/privacy.md](docs/privacy.md).
+
+## Repository-Struktur
+
+~~~text
+lib/
+  core/models.dart       Domänenmodelle, Validierung und Profilmigration
+  core/services.dart     Preferences, Secure Storage, WOL, Discovery und SSH
+  core/controller.dart   Riverpod-Zustände und abbrechbare Abläufe
+  servergy_app.dart      Dashboard, Onboarding, Einstellungen und Diagnose
+  main.dart              Flutter-Einstiegspunkt
+android/                 Android-Manifest und lokale Netzwerk-MethodChannel
+docs/server-setup.md     Server- und sudoers-Einrichtung
+docs/architecture.md     Datenfluss, Sicherheits- und Komponentenmodell
+docs/development.md      Lokale Entwicklung, Tests und Debugging
+docs/alpha.md            Alpha-Status, bekannte Grenzen und Abnahme
+docs/privacy.md          Lokale Datenverarbeitung
+test/                    Unit- und Fachlogiktests
+~~~
+
+## Beiträge und Branches
+
+`Dev` ist der Integrationsbranch für die Alpha-Entwicklung. `main` bleibt der
+stabile Zielbranch für spätere Releases. Änderungen sollen klein, kommentiert
+und mit `flutter analyze` sowie `flutter test` geprüft sein. Neue Netzwerk- oder
+SSH-Funktionen benötigen zusätzlich Fake-/Fehlerpfadtests und eine manuelle
+Abnahme auf mindestens einem echten Gerät.
+
+## Lizenz und Verteilung
+
+Die Lizenz und die produktiven Distributionsbedingungen müssen vor dem ersten
+öffentlichen Release ergänzt beziehungsweise bestätigt werden. Für Alpha-
+Artefakte ist GitHub auf dem Entwicklungsbranch vorgesehen; signierte
+Android-, Linux- und Windows-Releases gehören erst zur späteren Release-
+Pipeline.
