@@ -41,7 +41,7 @@ libsecret-1-0.
 
 | Plattform | Paket/Start | Hinweis |
 | --- | --- | --- |
-| Android | flutter build apk | Zum Starten wird lokaler Netzwerkzugriff benötigt. |
+| Android | flutter build apk | Android 12 (API 31) oder neuer; Build mit Android API 37; zum Starten wird lokaler Netzwerkzugriff benötigt. |
 | Ubuntu/Linux | flutter build linux | Benötigt libsecret-1 für gespeicherte Geheimnisse. |
 | Windows | flutter build windows | Der Build erfolgt auf einem Windows-Rechner. |
 

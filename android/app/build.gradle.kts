@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "dev.servergy.servergy"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage requires Android API 37 at compile time.
+    // This does not change the Android 12 (API 31) installation minimum.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -17,9 +19,8 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.servergy.servergy"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Android 12 (API 31) is Servergy's supported minimum.
+        minSdk = 31
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
