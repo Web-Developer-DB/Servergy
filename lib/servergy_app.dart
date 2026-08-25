@@ -331,10 +331,21 @@ class _Actions extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: state.busy ? null : controller.wake,
+          onPressed: state.busy || !profile.canWake ? null : controller.wake,
           icon: const Icon(Icons.keyboard_double_arrow_up_rounded),
-          label: const Text('Server starten'),
+          label: Text(
+            profile.canWake
+                ? 'Server starten'
+                : 'Wake-on-LAN noch einrichten',
+          ),
         ),
+        if (!profile.canWake) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Hinterlege MAC-Adresse und Broadcast-Adresse in den Einstellungen, um den ausgeschalteten Server starten zu können.',
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
+        ],
         const SizedBox(height: 12),
         OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
@@ -489,7 +500,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _password = TextEditingController();
   var _step = 0;
   var _mode = AuthenticationMode.keyPreferred;
+  var _configureWake = false;
   String? _keyPem;
+
   @override
   void initState() {
     super.initState();
@@ -499,9 +512,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       _host.text = p.host;
       _sshPort.text = '${p.sshPort}';
       _user.text = p.username;
-      _mac.text = '${p.mac}';
-      _broadcast.text = p.broadcast;
-      _wolPort.text = '${p.wolPort}';
+      _configureWake = p.canWake;
+      if (p.wakeOnLan case final wol?) {
+        _mac.text = '${wol.mac}';
+        _broadcast.text = wol.broadcast;
+        _wolPort.text = '${wol.port}';
+      }
       _mode = p.authenticationMode;
     }
   }
@@ -567,22 +583,24 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               content: const _StepInfo(
                 icon: Icons.home_outlined,
                 text:
-                    'Servergy steuert deinen Server nur im Heimnetz oder über ein bereits eingerichtetes VPN. Wake-on-LAN benötigt einen Netzwerkpfad für Broadcast-Pakete; viele VPNs leiten diese nicht weiter.',
+                    'Für die Ersteinrichtung muss dein Homeserver eingeschaltet und im Heimnetz erreichbar sein. Servergy arbeitet im Heimnetz oder über ein vorhandenes VPN. Die automatische Suche prüft nur dein aktuelles lokales Netz; VPN-Ziele trägst du manuell ein.',
               ),
             ),
             Step(
-              title: const Text('Serververbindung'),
+              title: const Text('Server finden'),
               isActive: _step >= 1,
               content: Column(
                 children: [
                   _field(_name, 'Anzeigename', Icons.badge_outlined),
-                  _field(_host, 'Hostname oder IP-Adresse', Icons.lan_outlined),
                   _field(
                     _sshPort,
                     'SSH-Port',
                     Icons.settings_ethernet_rounded,
                     number: true,
                   ),
+                  _discoveryCard(),
+                  const SizedBox(height: 12),
+                  _field(_host, 'Hostname oder IP-Adresse', Icons.lan_outlined),
                   _field(
                     _user,
                     'SSH-Benutzername',
@@ -592,44 +610,23 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               ),
             ),
             Step(
-              title: const Text('Wake-on-LAN'),
-              isActive: _step >= 2,
-              content: Column(
-                children: [
-                  _field(_mac, 'MAC-Adresse', Icons.memory_rounded),
-                  _field(
-                    _broadcast,
-                    'Broadcast-Adresse',
-                    Icons.broadcast_on_home_outlined,
-                  ),
-                  _field(
-                    _wolPort,
-                    'UDP-Port',
-                    Icons.send_to_mobile_outlined,
-                    number: true,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Tipp: Nutze die Broadcast-Adresse deines Subnetzes. 255.255.255.255 funktioniert nicht in jedem Netz.',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Step(
               title: const Text('SSH-Zugang'),
-              isActive: _step >= 3,
+              isActive: _step >= 2,
               content: _authStep(),
             ),
             Step(
-              title: const Text('Prüfen und speichern'),
-              isActive: _step >= 4,
+              title: const Text('Verbindung prüfen'),
+              isActive: _step >= 3,
               content: const _StepInfo(
                 icon: Icons.verified_user_outlined,
                 text:
-                    'Speichere die Konfiguration und teste danach die SSH-Verbindung. Beim ersten Kontakt vergleichst du den angezeigten Server-Fingerprint mit deinem Homeserver.',
+                    'Beim ersten SSH-Kontakt wird der Schlüsseltyp und der SHA-256-Fingerprint deines Servers angezeigt. Vergleiche ihn direkt am Server, bevor du vertraust.',
               ),
+            ),
+            Step(
+              title: const Text('Server später starten'),
+              isActive: _step >= 4,
+              content: _wakeStep(),
             ),
           ],
         ),
@@ -667,7 +664,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         onChanged: (v) => setState(() => _mode = v!),
         title: const Text('Passwort'),
         subtitle: const Text(
-          'Das Passwort kann optional sicher auf diesem Gerät gespeichert werden.',
+          'Das Passwort wird nach dem Speichern sicher auf diesem Gerät hinterlegt.',
         ),
         secondary: const Icon(Icons.password_outlined),
       ),
@@ -679,11 +676,135 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           autocorrect: false,
           decoration: const InputDecoration(
             labelText: 'SSH-Passwort',
-            helperText: 'Leer lassen: bei jeder Aktion nachfragen.',
+            helperText: 'Leer: vorhandenes gespeichertes Passwort beibehalten.',
           ),
         ),
     ],
   );
+
+  Widget _wakeStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: _configureWake,
+        onChanged: (value) => setState(() => _configureWake = value),
+        title: const Text('Wake-on-LAN jetzt einrichten'),
+        subtitle: const Text(
+          'Du kannst diesen Schritt überspringen und später in den Einstellungen ergänzen.',
+        ),
+      ),
+      if (_configureWake) ...[
+        _field(_mac, 'MAC-Adresse', Icons.memory_rounded),
+        _field(
+          _broadcast,
+          'Broadcast-Adresse',
+          Icons.broadcast_on_home_outlined,
+        ),
+        _field(
+          _wolPort,
+          'UDP-Port',
+          Icons.send_to_mobile_outlined,
+          number: true,
+        ),
+        const _StepInfo(
+          icon: Icons.info_outline_rounded,
+          text:
+              'Wake-on-LAN startet einen ausgeschalteten Server später wieder. Nutze die MAC-Adresse des kabelgebundenen Serveradapters. Einen echten Starttest führst du nach dem Einrichten mit ausgeschaltetem Server durch.',
+        ),
+      ] else
+        const _StepInfo(
+          icon: Icons.schedule_outlined,
+          text:
+              'Kein Problem: Richte zuerst die sichere SSH-Verbindung ein. MAC-Adresse und Broadcast-Adresse kannst du später ergänzen.',
+        ),
+    ],
+  );
+
+  Widget _discoveryCard() {
+    final discovery = ref.watch(discoveryProvider);
+    final searching = discovery.isSearching;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Server im Netzwerk suchen',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Sucht nur mögliche SSH-Server im aktuellen Heimnetz. Ein Treffer ist noch keine Identitätsbestätigung.',
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: searching
+                  ? ref.read(discoveryProvider.notifier).cancel
+                  : () {
+                      try {
+                        ref
+                            .read(discoveryProvider.notifier)
+                            .search(validatePort(_sshPort.text, label: 'SSH-Port'));
+                      } on ServergyError catch (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.message)),
+                        );
+                      }
+                    },
+              icon: Icon(searching ? Icons.close_rounded : Icons.search_rounded),
+              label: Text(searching ? 'Suche abbrechen' : 'Server suchen'),
+            ),
+            if (discovery.scope != null) ...[
+              const SizedBox(height: 8),
+              Text('Geprüfter Bereich: ${discovery.scope!.label}'),
+            ],
+            if (searching) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+            ],
+            if (discovery.error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                discovery.error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            for (final candidate in discovery.candidates) ...[
+              const Divider(height: 24),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.dns_outlined),
+                title: Text('${candidate.host}:${candidate.port}'),
+                subtitle: Text(
+                  [
+                    if (candidate.serviceName != null) candidate.serviceName!,
+                    if (candidate.banner.isNotEmpty) candidate.banner,
+                  ].join('\n'),
+                ),
+                trailing: const Text('Übernehmen'),
+                onTap: () => setState(() {
+                  _host.text = candidate.host;
+                  _sshPort.text = '${candidate.port}';
+                }),
+              ),
+            ],
+            if (discovery.status == DiscoveryStatus.completed &&
+                discovery.candidates.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'Keine SSH-Server gefunden. Gib Hostname oder IP-Adresse manuell ein.',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
   Widget _field(
     TextEditingController controller,
     String label,
@@ -694,8 +815,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     child: TextFormField(
       controller: controller,
       keyboardType: number ? TextInputType.number : null,
-      validator: (v) =>
-          v == null || v.trim().isEmpty ? '$label ist erforderlich.' : null,
+      validator: (v) {
+        final required = switch (label) {
+          'MAC-Adresse' || 'Broadcast-Adresse' || 'UDP-Port' => _configureWake,
+          _ => true,
+        };
+        return required && (v == null || v.trim().isEmpty)
+            ? '$label ist erforderlich.'
+            : null;
+      },
       decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
     ),
   );
@@ -720,20 +848,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Future<void> _continue() async {
-    if (_step < 3) {
-      setState(() => _step++);
-      return;
-    }
-    if (_step == 3) {
-      if (_mode == AuthenticationMode.keyPreferred &&
-          _keyPem == null &&
+    if (_step < 4) {
+      if (_step == 2 &&
+          _mode == AuthenticationMode.passwordOnly &&
+          _password.text.isEmpty &&
           ref.read(controllerProvider).profile == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Wähle einen SSH-Schlüssel oder nutze Passwort-Anmeldung.',
-            ),
-          ),
+          const SnackBar(content: Text('Gib ein SSH-Passwort ein.')),
         );
         return;
       }
@@ -747,19 +868,28 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         host: validateHost(_host.text),
         sshPort: validatePort(_sshPort.text, label: 'SSH-Port'),
         username: _user.text.trim(),
-        mac: MacAddress.parse(_mac.text),
-        broadcast: validateBroadcast(_broadcast.text),
-        wolPort: validatePort(_wolPort.text, label: 'UDP-Port'),
+        wakeOnLan: _configureWake
+            ? WakeOnLanSettings(
+                mac: MacAddress.parse(_mac.text),
+                broadcast: validateBroadcast(_broadcast.text),
+                port: validatePort(_wolPort.text, label: 'UDP-Port'),
+              )
+            : null,
         authenticationMode: _mode,
       );
-      await ref
-          .read(controllerProvider.notifier)
-          .saveProfile(
-            profile,
-            password: _password.text.isEmpty ? null : _password.text,
-            privateKeyPem: _keyPem,
-          );
-      if (mounted) Navigator.pop(context);
+      final passwordUpdate = _mode == AuthenticationMode.keyPreferred
+          ? const SecretUpdate.delete()
+          : _password.text.isEmpty
+          ? const SecretUpdate.keep()
+          : SecretUpdate.replace(_password.text);
+      final saved = await ref.read(controllerProvider.notifier).verifyAndSave(
+        profile,
+        passwordUpdate: passwordUpdate,
+        privateKeyPem: _keyPem,
+        credentials: (request) => _askCredentials(context, request),
+        trust: (fingerprint) => _confirmTrust(context, fingerprint),
+      );
+      if (saved && mounted) Navigator.pop(context);
     } on ServergyError catch (e) {
       ScaffoldMessenger.of(
         context,

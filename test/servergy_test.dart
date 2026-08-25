@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
@@ -56,8 +58,47 @@ void main() {
 
     expect(profile, isNotNull);
     expect(profile!.authenticationMode, AuthenticationMode.passwordOnly);
-    expect(profile.toJson()['version'], 2);
+    expect(profile.toJson()['version'], 3);
     expect(profile.toJson(), isNot(contains('rememberPassword')));
+    expect(profile.wakeOnLan?.mac.toString(), 'AA:BB:CC:DD:EE:FF');
+  });
+
+  test('allows a V3 SSH profile before Wake-on-LAN is configured', () {
+    const profile = ServerProfile(
+      name: 'Server',
+      host: 'server.lan',
+      sshPort: 22,
+      username: 'servergy',
+      authenticationMode: AuthenticationMode.passwordOnly,
+    );
+
+    final restored = ServerProfile.fromJson(jsonEncode(profile.toJson()));
+    expect(restored, isNotNull);
+    expect(restored!.canWake, isFalse);
+    expect(restored.wakeOnLan, isNull);
+  });
+
+  test('serializes only configured Wake-on-LAN settings', () {
+    final profile = ServerProfile(
+      name: 'Server',
+      host: '192.168.178.10',
+      sshPort: 22,
+      username: 'servergy',
+      wakeOnLan: WakeOnLanSettings(
+        mac: MacAddress.parse('AA:BB:CC:DD:EE:FF'),
+        broadcast: '192.168.178.255',
+        port: 9,
+      ),
+    );
+
+    expect(profile.toJson()['wakeOnLan'], isA<Map<String, Object>>());
+    expect(profile.canWake, isTrue);
+  });
+
+  test('expresses password writes without exposing a stored password', () {
+    expect(const SecretUpdate.keep().kind, SecretUpdateKind.keep);
+    expect(const SecretUpdate.delete().kind, SecretUpdateKind.delete);
+    expect(const SecretUpdate.replace('secret').value, 'secret');
   });
 
   test('validates hosts, ports, and IPv4 broadcast addresses', () {

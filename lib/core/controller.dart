@@ -13,6 +13,104 @@ final controllerProvider = NotifierProvider<ServerController, AppState>(
   ServerController.new,
 );
 
+final discoveryProvider =
+    NotifierProvider<DiscoveryController, DiscoveryState>(DiscoveryController.new);
+
+enum DiscoveryStatus { idle, preparing, searching, completed, cancelled, failed }
+
+class DiscoveryState {
+  const DiscoveryState({
+    this.status = DiscoveryStatus.idle,
+    this.scope,
+    this.candidates = const [],
+    this.error,
+  });
+
+  final DiscoveryStatus status;
+  final NetworkScope? scope;
+  final List<DiscoveredServer> candidates;
+  final String? error;
+
+  bool get isSearching =>
+      status == DiscoveryStatus.preparing || status == DiscoveryStatus.searching;
+}
+
+/// Owns a short-lived, user-triggered discovery run. It intentionally has its
+/// own state so searching never locks the power-control buttons on the home UI.
+class DiscoveryController extends Notifier<DiscoveryState> {
+  DiscoveryController({DiscoveryGateway? discovery})
+    : _discovery = discovery ?? DiscoveryService();
+
+  final DiscoveryGateway _discovery;
+  final LocalNetworkAccess _localAccess = LocalNetworkAccess();
+  var _run = 0;
+
+  @override
+  DiscoveryState build() => const DiscoveryState();
+
+  Future<void> search(int port) async {
+    if (state.isSearching) return;
+    final token = ++_run;
+    state = const DiscoveryState(status: DiscoveryStatus.preparing);
+    try {
+      if (!await _localAccess.ensureAllowed()) {
+        throw const ServergyError(
+          'Die Freigabe für das lokale Netzwerk wurde nicht erteilt. Du kannst den Server weiterhin manuell eintragen.',
+          code: 'local_network_permission_denied',
+        );
+      }
+      final scope = await _discovery.currentScope();
+      if (!_active(token)) return;
+      state = DiscoveryState(status: DiscoveryStatus.searching, scope: scope);
+      final candidates = <String, DiscoveredServer>{};
+      await for (final candidate in _discovery.discover(
+        scope,
+        port: port,
+        isCancelled: () => !_active(token),
+      )) {
+        if (!_active(token)) return;
+        final key = '${candidate.host}:${candidate.port}';
+        candidates[key] = candidate;
+        state = DiscoveryState(
+          status: DiscoveryStatus.searching,
+          scope: scope,
+          candidates: candidates.values.toList(growable: false),
+        );
+      }
+      if (_active(token)) {
+        state = DiscoveryState(
+          status: DiscoveryStatus.completed,
+          scope: scope,
+          candidates: candidates.values.toList(growable: false),
+        );
+      }
+    } on ServergyError catch (error) {
+      if (_active(token)) {
+        state = DiscoveryState(status: DiscoveryStatus.failed, error: error.message);
+      }
+    } catch (_) {
+      if (_active(token)) {
+        state = const DiscoveryState(
+          status: DiscoveryStatus.failed,
+          error: 'Die Serversuche konnte nicht gestartet werden. Gib die Adresse manuell ein.',
+        );
+      }
+    }
+  }
+
+  void cancel() {
+    if (!state.isSearching) return;
+    _run++;
+    state = DiscoveryState(
+      status: DiscoveryStatus.cancelled,
+      scope: state.scope,
+      candidates: state.candidates,
+    );
+  }
+
+  bool _active(int token) => ref.mounted && token == _run;
+}
+
 class AppState {
   const AppState({
     this.profile,
@@ -67,6 +165,7 @@ class ServerController extends Notifier<AppState> {
 
   final ProfileStore _store;
   final NetworkGateway _network;
+  final LocalNetworkAccess _localAccess = LocalNetworkAccess();
   SshGateway? _ssh;
   var _operation = 0;
 
@@ -90,18 +189,30 @@ class ServerController extends Notifier<AppState> {
 
   Future<void> saveProfile(
     ServerProfile profile, {
-    String? password,
+    SecretUpdate passwordUpdate = const SecretUpdate.keep(),
     String? privateKeyPem,
   }) async {
     final watch = Stopwatch()..start();
     try {
+      if (profile.authenticationMode == AuthenticationMode.passwordOnly &&
+          passwordUpdate.kind != SecretUpdateKind.replace &&
+          !await _store.hasPassword()) {
+        throw const ServergyError(
+          'Lege ein SSH-Passwort fest, damit die App die Verbindung später herstellen kann.',
+          code: 'password_required',
+        );
+      }
       await _store.saveProfile(profile);
-      if (password != null) await _store.savePassword(password);
+      await _store.updatePassword(
+        profile.authenticationMode == AuthenticationMode.keyPreferred
+            ? const SecretUpdate.delete()
+            : passwordUpdate,
+      );
       if (privateKeyPem != null) await _store.savePrivateKey(privateKeyPem);
       if (!ref.mounted) return;
       state = state.copyWith(
         profile: profile,
-        message: 'Einstellungen gespeichert. Prüfe jetzt die SSH-Verbindung.',
+        message: 'Einstellungen gespeichert. Teste jetzt die SSH-Verbindung.',
         clearError: true,
       );
       await _record(DiagnosticAction.configuration, true, 'ok', watch.elapsed);
@@ -111,10 +222,116 @@ class ServerController extends Notifier<AppState> {
     }
   }
 
+  /// Tests a draft before its credentials are committed to secure storage.
+  ///
+  /// This prevents a mistyped first password from becoming the saved state. The
+  /// host-key callback remains user-controlled, so a discovered IP can never
+  /// silently become a trusted server.
+  Future<bool> verifyAndSave(
+    ServerProfile profile, {
+    required SecretUpdate passwordUpdate,
+    required String? privateKeyPem,
+    required CredentialPrompter credentials,
+    required HostKeyPrompter trust,
+  }) async {
+    if (state.busy) return false;
+    final watch = Stopwatch()..start();
+    final token = ++_operation;
+    state = state.copyWith(
+      busy: true,
+      status: ServerStatus.checking,
+      clearError: true,
+    );
+    try {
+      final auth = await _draftCredentials(
+        profile,
+        passwordUpdate: passwordUpdate,
+        privateKeyPem: privateKeyPem,
+        prompt: credentials,
+      );
+      if (auth == null || !_active(token)) {
+        if (_active(token)) _complete(token, ServerStatus.unknown, 'Prüfung abgebrochen.');
+        return false;
+      }
+      await _sshService.test(profile, auth, onUnknownHostKey: trust);
+      if (!_active(token)) return false;
+      await _persistProfile(
+        profile,
+        passwordUpdate: passwordUpdate,
+        privateKeyPem: privateKeyPem,
+      );
+      if (!_active(token)) return false;
+      // Make the freshly verified draft immediately visible on the dashboard.
+      state = state.copyWith(profile: profile);
+      _complete(
+        token,
+        ServerStatus.online,
+        'SSH-Verbindung geprüft und Einstellungen sicher gespeichert.',
+      );
+      await _record(DiagnosticAction.configuration, true, 'verified', watch.elapsed);
+      return true;
+    } on ServergyError catch (error) {
+      if (_active(token)) _fail(error, DiagnosticAction.configuration, watch.elapsed);
+      return false;
+    } on SSHAuthFailError {
+      if (_active(token)) {
+        _fail(
+          const ServergyError(
+            'Die SSH-Anmeldung wurde abgelehnt. Prüfe Benutzername und Passwort oder Schlüssel.',
+            code: 'auth_denied',
+          ),
+          DiagnosticAction.configuration,
+          watch.elapsed,
+        );
+      }
+      return false;
+    } catch (_) {
+      if (_active(token)) {
+        _fail(
+          const ServergyError(
+            'Die SSH-Verbindung konnte nicht geprüft werden. Prüfe Heimnetz, VPN und Serveradresse.',
+            code: 'setup_ssh_failed',
+          ),
+          DiagnosticAction.configuration,
+          watch.elapsed,
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _persistProfile(
+    ServerProfile profile, {
+    required SecretUpdate passwordUpdate,
+    required String? privateKeyPem,
+  }) async {
+    await _store.saveProfile(profile);
+    await _store.updatePassword(
+      profile.authenticationMode == AuthenticationMode.keyPreferred
+          ? const SecretUpdate.delete()
+          : passwordUpdate,
+    );
+    if (privateKeyPem != null) await _store.savePrivateKey(privateKeyPem);
+  }
+
   Future<void> refresh() async {
     final profile = state.profile;
     if (profile == null || state.busy) return;
     final watch = Stopwatch()..start();
+    if (!await _localAccess.ensureAllowed()) {
+      state = state.copyWith(
+        status: ServerStatus.unknown,
+        error: 'Die Freigabe für das lokale Netzwerk fehlt. Erlaube sie in Android und aktualisiere danach erneut.',
+        clearMessage: true,
+      );
+      await _record(
+        DiagnosticAction.refresh,
+        false,
+        'local_network_permission_denied',
+        watch.elapsed,
+      );
+      return;
+    }
     state = state.copyWith(status: ServerStatus.checking, clearError: true);
     final online = await _network.isReachable(profile);
     if (!ref.mounted) return;
@@ -151,6 +368,12 @@ class ServerController extends Notifier<AppState> {
       clearError: true,
     );
     try {
+      if (!await _localAccess.ensureAllowed()) {
+        throw const ServergyError(
+          'Die Freigabe für das lokale Netzwerk fehlt. Erlaube sie in Android und versuche den Start erneut.',
+          code: 'local_network_permission_denied',
+        );
+      }
       if (await _network.isReachable(profile)) {
         _complete(token, ServerStatus.online, 'Der Server läuft bereits.');
         await _record(
@@ -221,6 +444,12 @@ class ServerController extends Notifier<AppState> {
       clearError: true,
     );
     try {
+      if (!await _localAccess.ensureAllowed()) {
+        throw const ServergyError(
+          'Die Freigabe für das lokale Netzwerk fehlt. Erlaube sie in Android und versuche die SSH-Aktion erneut.',
+          code: 'local_network_permission_denied',
+        );
+      }
       if (shutdown && !await _network.isReachable(profile)) {
         _complete(
           token,
@@ -236,27 +465,10 @@ class ServerController extends Notifier<AppState> {
           _complete(token, ServerStatus.unknown, 'Aktion abgebrochen.');
         return;
       }
-      try {
-        if (shutdown) {
-          await _sshService.poweroff(profile, auth, onUnknownHostKey: trust);
-        } else {
-          await _sshService.test(profile, auth, onUnknownHostKey: trust);
-        }
-      } on SSHAuthFailError {
-        // Only a key-only attempt may ask for the password after an auth reject.
-        if (!auth.hasKey || auth.hasPassword) rethrow;
-        final fallback = await prompt(CredentialRequest.password);
-        if (fallback == null || !fallback.hasPassword) rethrow;
-        auth = SshCredentials(
-          privateKeyPem: auth.privateKeyPem,
-          keyPassphrase: auth.keyPassphrase,
-          password: fallback.password,
-        );
-        if (shutdown) {
-          await _sshService.poweroff(profile, auth, onUnknownHostKey: trust);
-        } else {
-          await _sshService.test(profile, auth, onUnknownHostKey: trust);
-        }
+      if (shutdown) {
+        await _sshService.poweroff(profile, auth, onUnknownHostKey: trust);
+      } else {
+        await _sshService.test(profile, auth, onUnknownHostKey: trust);
       }
       if (!_active(token)) return;
       if (!shutdown) {
@@ -328,7 +540,6 @@ class ServerController extends Notifier<AppState> {
     CredentialPrompter prompt,
   ) async {
     final key = await _store.privateKey();
-    final password = await _store.password();
     if (profile.authenticationMode == AuthenticationMode.keyPreferred &&
         key != null) {
       String? passphrase;
@@ -341,12 +552,54 @@ class ServerController extends Notifier<AppState> {
       return SshCredentials(
         privateKeyPem: key,
         keyPassphrase: passphrase,
-        password: password,
       );
     }
+    if (profile.authenticationMode == AuthenticationMode.keyPreferred) {
+      throw const ServergyError(
+        'Der gespeicherte SSH-Schlüssel fehlt. Importiere ihn erneut in den Einstellungen.',
+        code: 'key_missing',
+      );
+    }
+    final password = await _store.password();
     if (password != null && password.isNotEmpty)
       return SshCredentials(password: password);
-    return prompt(CredentialRequest.password);
+    throw const ServergyError(
+      'Das gespeicherte SSH-Passwort fehlt. Hinterlege es erneut in den Einstellungen.',
+      code: 'password_missing',
+    );
+  }
+
+  Future<SshCredentials?> _draftCredentials(
+    ServerProfile profile, {
+    required SecretUpdate passwordUpdate,
+    required String? privateKeyPem,
+    required CredentialPrompter prompt,
+  }) async {
+    if (profile.authenticationMode == AuthenticationMode.passwordOnly) {
+      final password = passwordUpdate.kind == SecretUpdateKind.replace
+          ? passwordUpdate.value
+          : await _store.password();
+      if (password == null || password.isEmpty) {
+        throw const ServergyError(
+          'Gib ein SSH-Passwort ein, damit die Verbindung geprüft werden kann.',
+          code: 'password_required',
+        );
+      }
+      return SshCredentials(password: password);
+    }
+    final key = privateKeyPem ?? await _store.privateKey();
+    if (key == null || key.isEmpty) {
+      throw const ServergyError(
+        'Wähle einen privaten SSH-Schlüssel aus.',
+        code: 'key_missing',
+      );
+    }
+    String? passphrase;
+    if (SSHKeyPair.isEncryptedPem(key)) {
+      passphrase = (await prompt(CredentialRequest.keyPassphrase))?.keyPassphrase;
+      if (passphrase == null || passphrase.isEmpty) return null;
+    }
+    return SshCredentials(privateKeyPem: key, keyPassphrase: passphrase);
   }
 
   bool _active(int token) => ref.mounted && token == _operation;
