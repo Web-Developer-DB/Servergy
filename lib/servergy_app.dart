@@ -334,9 +334,7 @@ class _Actions extends ConsumerWidget {
           onPressed: state.busy || !profile.canWake ? null : controller.wake,
           icon: const Icon(Icons.keyboard_double_arrow_up_rounded),
           label: Text(
-            profile.canWake
-                ? 'Server starten'
-                : 'Wake-on-LAN noch einrichten',
+            profile.canWake ? 'Server starten' : 'Wake-on-LAN noch einrichten',
           ),
         ),
         if (!profile.canWake) ...[
@@ -498,6 +496,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _broadcast = TextEditingController(text: '255.255.255.255');
   final _wolPort = TextEditingController(text: '9');
   final _password = TextEditingController();
+  // Stepper manages a long form on small phones. Keeping the controller here
+  // lets Flutter retain a stable scroll position during rebuilds.
+  final _stepScrollController = ScrollController();
   var _step = 0;
   var _mode = AuthenticationMode.keyPreferred;
   var _configureWake = false;
@@ -524,6 +525,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   @override
   void dispose() {
+    _stepScrollController.dispose();
     for (final item in [
       _name,
       _host,
@@ -553,6 +555,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       child: Form(
         key: _form,
         child: Stepper(
+          controller: _stepScrollController,
+          physics: const ClampingScrollPhysics(),
+          // The default Stepper margin is generous on tablets but makes the
+          // content too narrow on phones. A small, explicit margin works from
+          // compact phones through desktop windows without touching the rail.
+          margin: const EdgeInsets.fromLTRB(12, 8, 12, 28),
+          clipBehavior: Clip.none,
           currentStep: _step,
           onStepCancel: _step == 0
               ? () => Navigator.pop(context)
@@ -580,63 +589,80 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             Step(
               title: const Text('Netzwerkgrenze'),
               isActive: _step >= 0,
-              content: const _StepInfo(
-                icon: Icons.home_outlined,
-                text:
-                    'Für die Ersteinrichtung muss dein Homeserver eingeschaltet und im Heimnetz erreichbar sein. Servergy arbeitet im Heimnetz oder über ein vorhandenes VPN. Die automatische Suche prüft nur dein aktuelles lokales Netz; VPN-Ziele trägst du manuell ein.',
+              content: _stepContent(
+                const _StepInfo(
+                  icon: Icons.home_outlined,
+                  text:
+                      'Für die Ersteinrichtung muss dein Homeserver eingeschaltet und im Heimnetz erreichbar sein. Servergy arbeitet im Heimnetz oder über ein vorhandenes VPN. Die automatische Suche prüft nur dein aktuelles lokales Netz; VPN-Ziele trägst du manuell ein.',
+                ),
               ),
             ),
             Step(
               title: const Text('Server finden'),
               isActive: _step >= 1,
-              content: Column(
-                children: [
-                  _field(_name, 'Anzeigename', Icons.badge_outlined),
-                  _field(
-                    _sshPort,
-                    'SSH-Port',
-                    Icons.settings_ethernet_rounded,
-                    number: true,
-                  ),
-                  _discoveryCard(),
-                  const SizedBox(height: 12),
-                  _field(_host, 'Hostname oder IP-Adresse', Icons.lan_outlined),
-                  _field(
-                    _user,
-                    'SSH-Benutzername',
-                    Icons.person_outline_rounded,
-                  ),
-                ],
+              content: _stepContent(
+                Column(
+                  children: [
+                    _field(_name, 'Anzeigename', Icons.badge_outlined),
+                    _field(
+                      _sshPort,
+                      'SSH-Port',
+                      Icons.settings_ethernet_rounded,
+                      number: true,
+                    ),
+                    _discoveryCard(),
+                    const SizedBox(height: 12),
+                    _field(
+                      _host,
+                      'Hostname oder IP-Adresse',
+                      Icons.lan_outlined,
+                    ),
+                    _field(
+                      _user,
+                      'SSH-Benutzername',
+                      Icons.person_outline_rounded,
+                    ),
+                  ],
+                ),
               ),
             ),
             Step(
               title: const Text('SSH-Zugang'),
               isActive: _step >= 2,
-              content: _authStep(),
+              content: _stepContent(_authStep()),
             ),
             Step(
               title: const Text('Verbindung prüfen'),
               isActive: _step >= 3,
-              content: const _StepInfo(
-                icon: Icons.verified_user_outlined,
-                text:
-                    'Beim ersten SSH-Kontakt wird der Schlüsseltyp und der SHA-256-Fingerprint deines Servers angezeigt. Vergleiche ihn direkt am Server, bevor du vertraust.',
+              content: _stepContent(
+                const _StepInfo(
+                  icon: Icons.verified_user_outlined,
+                  text:
+                      'Beim ersten SSH-Kontakt wird der Schlüsseltyp und der SHA-256-Fingerprint deines Servers angezeigt. Vergleiche ihn direkt am Server, bevor du vertraust.',
+                ),
               ),
             ),
             Step(
               title: const Text('Server später starten'),
               isActive: _step >= 4,
-              content: _wakeStep(),
+              content: _stepContent(_wakeStep()),
             ),
           ],
         ),
       ),
     ),
   );
+
+  /// Adds breathing room above every step's first child. Floating field labels
+  /// can otherwise be clipped by the Stepper's expanding/collapsing viewport.
+  Widget _stepContent(Widget child) =>
+      Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 4), child: child);
+
   Widget _authStep() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       RadioListTile<AuthenticationMode>(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
         value: AuthenticationMode.keyPreferred,
         groupValue: _mode,
         onChanged: (v) => setState(() => _mode = v!),
@@ -649,16 +675,22 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         secondary: const Icon(Icons.key_outlined),
       ),
       if (_mode == AuthenticationMode.keyPreferred)
-        OutlinedButton.icon(
-          onPressed: _importKey,
-          icon: const Icon(Icons.file_open_outlined),
-          label: Text(
-            _keyPem == null
-                ? 'Schlüsseldatei auswählen'
-                : 'Schlüsseldatei ändern',
+        Padding(
+          // Keep the button's rounded border clear of the Stepper rail on
+          // narrow displays. It also leaves room for focus and touch effects.
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: OutlinedButton.icon(
+            onPressed: _importKey,
+            icon: const Icon(Icons.file_open_outlined),
+            label: Text(
+              _keyPem == null
+                  ? 'Schlüsseldatei auswählen'
+                  : 'Schlüsseldatei ändern',
+            ),
           ),
         ),
       RadioListTile<AuthenticationMode>(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
         value: AuthenticationMode.passwordOnly,
         groupValue: _mode,
         onChanged: (v) => setState(() => _mode = v!),
@@ -732,9 +764,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           children: [
             Text(
               'Server im Netzwerk suchen',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
             const Text(
@@ -748,14 +780,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                       try {
                         ref
                             .read(discoveryProvider.notifier)
-                            .search(validatePort(_sshPort.text, label: 'SSH-Port'));
+                            .search(
+                              validatePort(_sshPort.text, label: 'SSH-Port'),
+                            );
                       } on ServergyError catch (error) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(error.message)),
-                        );
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(error.message)));
                       }
                     },
-              icon: Icon(searching ? Icons.close_rounded : Icons.search_rounded),
+              icon: Icon(
+                searching ? Icons.close_rounded : Icons.search_rounded,
+              ),
               label: Text(searching ? 'Suche abbrechen' : 'Server suchen'),
             ),
             if (discovery.scope != null) ...[
@@ -805,13 +841,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       ),
     );
   }
+
   Widget _field(
     TextEditingController controller,
     String label,
     IconData icon, {
     bool number = false,
   }) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    // A little top space protects a floating input label at the top of a
+    // Stepper page, especially after the framework scrolls to the active step.
+    padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
     child: TextFormField(
       controller: controller,
       keyboardType: number ? TextInputType.number : null,
@@ -882,13 +921,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           : _password.text.isEmpty
           ? const SecretUpdate.keep()
           : SecretUpdate.replace(_password.text);
-      final saved = await ref.read(controllerProvider.notifier).verifyAndSave(
-        profile,
-        passwordUpdate: passwordUpdate,
-        privateKeyPem: _keyPem,
-        credentials: (request) => _askCredentials(context, request),
-        trust: (fingerprint) => _confirmTrust(context, fingerprint),
-      );
+      final saved = await ref
+          .read(controllerProvider.notifier)
+          .verifyAndSave(
+            profile,
+            passwordUpdate: passwordUpdate,
+            privateKeyPem: _keyPem,
+            credentials: (request) => _askCredentials(context, request),
+            trust: (fingerprint) => _confirmTrust(context, fingerprint),
+          );
       if (saved && mounted) Navigator.pop(context);
     } on ServergyError catch (e) {
       ScaffoldMessenger.of(
