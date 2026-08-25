@@ -41,11 +41,25 @@ Auf Ubuntu/Debian:
 
 ~~~bash
 sudo adduser servergy
-sudo usermod -aG sudo servergy
 ~~~
 
-Wähle ein starkes, einzigartiges Passwort. Die App unterstützt im ersten
-Stand die Passwort-Anmeldung und prüft beim ersten Kontakt den SSH-Host-Key.
+**Füge diesen Benutzer nicht zur Gruppe `sudo` hinzu.** Servergy darf nur den
+explizit freigegebenen Ausschalt-Helper aufrufen; eine Gruppenmitgliedschaft
+wäre deutlich weitergehender Zugriff als nötig.
+
+Die App unterstützt SSH-Schlüssel (empfohlen) und Passwort-Anmeldung als
+Fallback. Lege für den Zugriff einen eigenen Schlüssel an:
+
+~~~bash
+ssh-keygen -t ed25519 -f ~/.ssh/servergy_ed25519 -C 'Servergy homeserver control'
+sudo install -d -o servergy -g servergy -m 0700 /home/servergy/.ssh
+sudo install -o servergy -g servergy -m 0600 ~/.ssh/servergy_ed25519.pub /home/servergy/.ssh/authorized_keys
+~~~
+
+Importiere anschließend die **private** Datei `servergy_ed25519` in Servergy.
+Die Datei bleibt im System-Schlüsselspeicher des Steuergeräts. Ist sie mit
+einer Passphrase geschützt, fragt die App diese bei jeder Verwendung ab und
+speichert sie nicht.
 
 Stelle sicher, dass sshd läuft:
 
@@ -140,3 +154,16 @@ Vergleich.
 
 Danach zuerst **SSH-Verbindung testen**, dann das Ausschalten erproben und
 abschließend Wake-on-LAN testen.
+
+## Fehlerdiagnose und VPN
+
+- Wake-on-LAN benötigt einen Weg für IPv4-Broadcast-Pakete. Viele VPNs leiten
+  solche Pakete nicht weiter. Verbinde dich zum Starten in diesem Fall mit dem
+  Heimnetz oder richte einen geeigneten WOL-Relay im eigenen Netz ein.
+- Erscheint ein neuer SSH-Fingerprint, brich die Verbindung ab und vergleiche
+  ihn direkt am Server mit `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+  -E sha256`. Akzeptiere einen geänderten Key nicht blind.
+- Bei „Ausschaltbefehl abgelehnt“ prüfe mit `sudo -l -U servergy`, dass nur
+  `/usr/local/sbin/servergy-poweroff` freigegeben ist.
+- Das Diagnoseprotokoll der App enthält nur Zeit, Aktion, Fehlercode und Dauer;
+  es exportiert nie Zugangsdaten, Schlüssel, Hostadressen oder MAC-Adressen.

@@ -1,717 +1,158 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+// RadioGroup is not yet available in the project's supported Flutter SDK;
+// the current RadioListTile API remains compatible with Android, Linux, Windows.
+// ignore_for_file: curly_braces_in_flow_control_structures, deprecated_member_use, use_build_context_synchronously
 
-import 'package:dartssh2/dartssh2.dart';
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-const _profileKey = 'servergy.profile.v1';
-const _passwordKey = 'servergy.password.v1';
-const _hostKeyKey = 'servergy.hostkey.v1';
-
-final controllerProvider = NotifierProvider<ServerController, AppState>(
-  ServerController.new,
-);
+import 'core/controller.dart';
+import 'core/models.dart';
 
 class ServergyApp extends StatelessWidget {
   const ServergyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const navy = Color(0xff071f2d);
-    const green = Color(0xff00f26a);
-    const cyan = Color(0xff08c5f5);
-    return MaterialApp(
-      title: 'Servergy',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: navy,
-          brightness: Brightness.light,
-        ).copyWith(primary: navy, secondary: green, tertiary: cyan),
-        useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-        ),
-      ),
-      darkTheme: ThemeData(
-        colorScheme:
-            ColorScheme.fromSeed(
-              seedColor: green,
-              brightness: Brightness.dark,
-            ).copyWith(
-              primary: green,
-              secondary: cyan,
-              surface: const Color(0xff102735),
-            ),
-        useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-        ),
-      ),
-      themeMode: ThemeMode.system,
-      home: const HomeScreen(),
-    );
-  }
-}
-
-enum ServerStatus { unknown, checking, offline, online, waking, shuttingDown }
-
-class AppState {
-  const AppState({
-    this.profile,
-    this.status = ServerStatus.unknown,
-    this.message,
-    this.error,
-    this.busy = false,
-  });
-
-  final ServerProfile? profile;
-  final ServerStatus status;
-  final String? message;
-  final String? error;
-  final bool busy;
-
-  AppState copyWith({
-    ServerProfile? profile,
-    ServerStatus? status,
-    String? message,
-    String? error,
-    bool? busy,
-    bool clearMessage = false,
-    bool clearError = false,
-  }) => AppState(
-    profile: profile ?? this.profile,
-    status: status ?? this.status,
-    message: clearMessage ? null : message ?? this.message,
-    error: clearError ? null : error ?? this.error,
-    busy: busy ?? this.busy,
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Servergy',
+    debugShowCheckedModeBanner: false,
+    theme: _theme(Brightness.light),
+    darkTheme: _theme(Brightness.dark),
+    themeMode: ThemeMode.system,
+    home: const HomeScreen(),
   );
 }
 
-class ServerProfile {
-  const ServerProfile({
-    required this.name,
-    required this.host,
-    required this.sshPort,
-    required this.username,
-    required this.mac,
-    required this.broadcast,
-    required this.wolPort,
-    required this.rememberPassword,
-  });
-
-  final String name;
-  final String host;
-  final int sshPort;
-  final String username;
-  final MacAddress mac;
-  final String broadcast;
-  final int wolPort;
-  final bool rememberPassword;
-
-  Map<String, Object> toJson() => {
-    'name': name,
-    'host': host,
-    'sshPort': sshPort,
-    'username': username,
-    'mac': mac.toString(),
-    'broadcast': broadcast,
-    'wolPort': wolPort,
-    'rememberPassword': rememberPassword,
-  };
-
-  static ServerProfile? fromJson(String source) {
-    try {
-      final json = jsonDecode(source) as Map<String, dynamic>;
-      return ServerProfile(
-        name: json['name'] as String,
-        host: json['host'] as String,
-        sshPort: json['sshPort'] as int,
-        username: json['username'] as String,
-        mac: MacAddress.parse(json['mac'] as String),
-        broadcast: json['broadcast'] as String,
-        wolPort: json['wolPort'] as int,
-        rememberPassword: json['rememberPassword'] as bool? ?? false,
+ThemeData _theme(Brightness brightness) {
+  const navy = Color(0xff071f2d);
+  final dark = brightness == Brightness.dark;
+  final scheme = ColorScheme.fromSeed(seedColor: navy, brightness: brightness)
+      .copyWith(
+        primary: dark ? const Color(0xff00d878) : const Color(0xff007a43),
+        onPrimary: dark ? navy : Colors.white,
+        secondary: dark ? const Color(0xff08bce8) : const Color(0xff007a9e),
+        onSecondary: dark ? navy : Colors.white,
+        tertiary: dark ? const Color(0xff08bce8) : navy,
+        surface: dark ? const Color(0xff0d1d27) : const Color(0xfff8fafc),
       );
-    } catch (_) {
-      return null;
-    }
-  }
-}
-
-class MacAddress {
-  const MacAddress._(this.bytes);
-  final Uint8List bytes;
-
-  factory MacAddress.parse(String value) {
-    final compact = value.replaceAll(RegExp('[:.\\-\\s]'), '');
-    if (!RegExp(r'^[0-9a-fA-F]{12}$').hasMatch(compact)) {
-      throw const ServergyError('Die MAC-Adresse ist ungültig.');
-    }
-    final bytes = Uint8List.fromList([
-      for (var i = 0; i < 12; i += 2)
-        int.parse(compact.substring(i, i + 2), radix: 16),
-    ]);
-    if (bytes.every((byte) => byte == 0) || bytes.first.isOdd) {
-      throw const ServergyError(
-        'Die MAC-Adresse muss eine eindeutige Geräteadresse sein.',
-      );
-    }
-    return MacAddress._(bytes);
-  }
-
-  @override
-  String toString() => bytes
-      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-      .join(':')
-      .toUpperCase();
-}
-
-class ServergyError implements Exception {
-  const ServergyError(this.message);
-  final String message;
-}
-
-class SettingsStore {
-  final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
-  final FlutterSecureStorage _secrets = const FlutterSecureStorage();
-
-  Future<ServerProfile?> loadProfile() async {
-    final value = await _preferences.getString(_profileKey);
-    return value == null ? null : ServerProfile.fromJson(value);
-  }
-
-  Future<void> saveProfile(ServerProfile profile, String password) async {
-    await _preferences.setString(_profileKey, jsonEncode(profile.toJson()));
-    if (profile.rememberPassword && password.isNotEmpty) {
-      await _secrets.write(key: _passwordKey, value: password);
-    } else if (!profile.rememberPassword) {
-      await _secrets.delete(key: _passwordKey);
-    }
-  }
-
-  Future<String?> password() => _secrets.read(key: _passwordKey);
-  Future<String?> hostKeyFor(ServerProfile profile) async {
-    final raw = await _secrets.read(key: _hostKeyKey);
-    if (raw == null) return null;
-    try {
-      final record = jsonDecode(raw) as Map<String, dynamic>;
-      if (record['scope'] == _hostKeyScope(profile)) {
-        return record['fingerprint'] as String?;
-      }
-    } on FormatException {
-      // An older app version stored the fingerprint without a server scope.
-      // It is deliberately ignored so that a new confirmation is required.
-    }
-    return null;
-  }
-
-  Future<void> trustHostKey(ServerProfile profile, String fingerprint) =>
-      _secrets.write(
-        key: _hostKeyKey,
-        value: jsonEncode(<String, String>{
-          'scope': _hostKeyScope(profile),
-          'fingerprint': fingerprint,
-        }),
-      );
-
-  String _hostKeyScope(ServerProfile profile) => <String>[
-    profile.host.trim().toLowerCase(),
-    profile.sshPort.toString(),
-  ].join(':');
-}
-
-class NetworkService {
-  Uint8List magicPacket(MacAddress mac) {
-    final packet = Uint8List(102)..fillRange(0, 6, 0xff);
-    for (var repeat = 0; repeat < 16; repeat++) {
-      packet.setRange(6 + repeat * 6, 12 + repeat * 6, mac.bytes);
-    }
-    return packet;
-  }
-
-  Future<bool> isReachable(ServerProfile profile) async {
-    try {
-      final socket = await Socket.connect(
-        profile.host,
-        profile.sshPort,
-        timeout: const Duration(seconds: 2),
-      );
-      socket.destroy();
-      return true;
-    } on SocketException {
-      return false;
-    } on TimeoutException {
-      return false;
-    }
-  }
-
-  Future<void> wake(ServerProfile profile) async {
-    final target = InternetAddress.tryParse(profile.broadcast);
-    if (target == null || target.type != InternetAddressType.IPv4) {
-      throw const ServergyError(
-        'Die Broadcast-Adresse muss eine IPv4-Adresse sein.',
-      );
-    }
-    final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-    try {
-      socket.broadcastEnabled = true;
-      final packet = magicPacket(profile.mac);
-      for (var attempt = 0; attempt < 3; attempt++) {
-        if (socket.send(packet, target, profile.wolPort) != packet.length) {
-          throw const ServergyError(
-            'Wake-on-LAN konnte nicht gesendet werden.',
-          );
-        }
-        if (attempt < 2) {
-          await Future<void>.delayed(const Duration(milliseconds: 250));
-        }
-      }
-    } finally {
-      socket.close();
-    }
-  }
-}
-
-class SshService {
-  Future<void> test(
-    ServerProfile profile,
-    String password, {
-    required Future<bool> Function(String fingerprint) onUnknownHostKey,
-  }) async {
-    final client = await _connect(profile, password, onUnknownHostKey);
-    try {
-      final output = await client.run('printf servergy-ok');
-      if (utf8.decode(output) != 'servergy-ok') {
-        throw const ServergyError(
-          'Der SSH-Test lieferte keine erwartete Antwort.',
-        );
-      }
-    } finally {
-      await client.close();
-    }
-  }
-
-  Future<void> poweroff(
-    ServerProfile profile,
-    String password, {
-    required Future<bool> Function(String fingerprint) onUnknownHostKey,
-  }) async {
-    final client = await _connect(profile, password, onUnknownHostKey);
-    try {
-      await client.execute('sudo -n /usr/local/sbin/servergy-poweroff');
-    } finally {
-      await client.close();
-    }
-  }
-
-  Future<SSHClient> _connect(
-    ServerProfile profile,
-    String password,
-    Future<bool> Function(String fingerprint) onUnknownHostKey,
-  ) async {
-    final stored = await SettingsStore().hostKeyFor(profile);
-    final socket = await SSHSocket.connect(
-      profile.host,
-      profile.sshPort,
-      timeout: const Duration(seconds: 8),
-    );
-    final client = SSHClient(
-      socket,
-      username: profile.username,
-      handshakeTimeout: const Duration(seconds: 10),
-      authTimeout: const Duration(seconds: 10),
-      onPasswordRequest: () => password,
-      onVerifyHostKey: (type, fingerprint) async {
-        final current = <String>[type, utf8.decode(fingerprint)].join(':');
-        if (stored == null) {
-          return onUnknownHostKey(current);
-        }
-        if (stored != current) {
-          throw const ServergyError(
-            'Der SSH-Host-Key hat sich geändert. Verbindung blockiert.',
-          );
-        }
-        return true;
-      },
-    );
-    await client.authenticated;
-    return client;
-  }
-}
-
-class ServerController extends Notifier<AppState> {
-  final _settings = SettingsStore();
-  final _network = NetworkService();
-  final _ssh = SshService();
-
-  @override
-  AppState build() {
-    unawaited(_load());
-    return const AppState();
-  }
-
-  Future<void> _load() async {
-    final profile = await _settings.loadProfile();
-    if (!ref.mounted) return;
-    state = state.copyWith(profile: profile);
-    if (profile != null) await refresh();
-  }
-
-  Future<void> save(ServerProfile profile, String password) async {
-    await _settings.saveProfile(profile, password);
-    if (!ref.mounted) return;
-    state = state.copyWith(
-      profile: profile,
-      message: 'Einstellungen gespeichert.',
-      clearError: true,
-    );
-    await refresh();
-  }
-
-  Future<void> refresh() async {
-    final profile = state.profile;
-    if (profile == null || state.busy) return;
-    state = state.copyWith(status: ServerStatus.checking);
-    final online = await _network.isReachable(profile);
-    if (ref.mounted) {
-      state = state.copyWith(
-        status: online ? ServerStatus.online : ServerStatus.offline,
-      );
-    }
-  }
-
-  Future<void> wake() async {
-    final profile = state.profile;
-    if (profile == null || state.busy) return;
-    state = state.copyWith(
-      busy: true,
-      status: ServerStatus.waking,
-      clearError: true,
-    );
-    try {
-      if (await _network.isReachable(profile)) {
-        state = state.copyWith(
-          busy: false,
-          status: ServerStatus.online,
-          message: 'Der Server läuft bereits.',
-        );
-        return;
-      }
-      await _network.wake(profile);
-      state = state.copyWith(
-        message: 'Startsignal gesendet – warte auf den Server …',
-      );
-      for (var attempt = 0; attempt < 45; attempt++) {
-        await Future<void>.delayed(const Duration(seconds: 2));
-        if (await _network.isReachable(profile)) {
-          state = state.copyWith(
-            busy: false,
-            status: ServerStatus.online,
-            message: 'Server ist erreichbar.',
-          );
-          return;
-        }
-      }
-      _fail(
-        'Startsignal wurde gesendet, aber der Server ist noch nicht erreichbar.',
-      );
-    } on ServergyError catch (error) {
-      _fail(error.message);
-    } on SocketException {
-      _fail('Das lokale Netzwerk ist nicht erreichbar.');
-    }
-  }
-
-  Future<void> testSsh(BuildContext context) => _sshAction(context, false);
-  Future<void> shutdown(BuildContext context) => _sshAction(context, true);
-
-  Future<void> _sshAction(BuildContext context, bool shutdown) async {
-    final profile = state.profile;
-    if (profile == null || state.busy) return;
-    state = state.copyWith(
-      busy: true,
-      status: shutdown ? ServerStatus.shuttingDown : ServerStatus.checking,
-      clearError: true,
-    );
-    try {
-      if (shutdown && !await _network.isReachable(profile)) {
-        state = state.copyWith(
-          busy: false,
-          status: ServerStatus.offline,
-          message: 'Der Server ist bereits ausgeschaltet.',
-        );
-        return;
-      }
-      final storedPassword = await _settings.password();
-      if (!context.mounted) return;
-      final password = storedPassword ?? await _askPassword(context);
-      if (!context.mounted) return;
-      if (password == null || password.isEmpty) {
-        state = state.copyWith(busy: false);
-        return;
-      }
-      Future<bool> trust(String fingerprint) =>
-          _askHostTrust(context, fingerprint);
-      if (shutdown) {
-        await _ssh.poweroff(profile, password, onUnknownHostKey: trust);
-        for (var attempt = 0; attempt < 30; attempt++) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-          if (!await _network.isReachable(profile)) {
-            state = state.copyWith(
-              busy: false,
-              status: ServerStatus.offline,
-              message: 'Server wurde heruntergefahren.',
-            );
-            return;
-          }
-        }
-        _fail('Der Server ist weiterhin erreichbar. Bitte prüfe ihn manuell.');
-      } else {
-        await _ssh.test(profile, password, onUnknownHostKey: trust);
-        state = state.copyWith(
-          busy: false,
-          message: 'SSH-Verbindung erfolgreich getestet.',
-        );
-      }
-    } on ServergyError catch (error) {
-      _fail(error.message);
-    } on SSHAuthFailError {
-      _fail('Die SSH-Anmeldung wurde abgelehnt.');
-    } on SocketException {
-      _fail('Der Server ist über SSH nicht erreichbar.');
-    } catch (_) {
-      _fail('Die SSH-Aktion ist fehlgeschlagen.');
-    }
-  }
-
-  Future<String?> _askPassword(BuildContext context) async {
-    final input = TextEditingController();
-    final value = await showDialog<({String password, bool remember})>(
-      context: context,
-      builder: (context) => _PasswordDialog(controller: input),
-    );
-    input.dispose();
-    if (value?.remember ?? false) {
-      await _settings.saveProfile(state.profile!, value!.password);
-    }
-    return value?.password;
-  }
-
-  Future<bool> _askHostTrust(BuildContext context, String fingerprint) async {
-    final trust = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('SSH-Server bestätigen'),
-        content: SelectableText(
-          <String>[
-            'Fingerprint:\n\n',
-            fingerprint,
-            '\n\nVergleiche ihn mit dem Homeserver, bevor du vertraust.',
-          ].join(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Vertrauen'),
-          ),
-        ],
+  const shape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(20)),
+  );
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: scheme.surface,
+    appBarTheme: AppBarTheme(
+      backgroundColor: scheme.surface,
+      foregroundColor: scheme.onSurface,
+      scrolledUnderElevation: 0,
+    ),
+    cardTheme: CardThemeData(
+      color: scheme.surfaceContainerLow,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: shape,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest.withValues(alpha: .52),
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+        borderSide: BorderSide.none,
       ),
-    );
-    if (trust ?? false) {
-      await _settings.trustHostKey(state.profile!, fingerprint);
-    }
-    return trust ?? false;
-  }
-
-  void clearNotice() =>
-      state = state.copyWith(clearMessage: true, clearError: true);
-  void _fail(String error) =>
-      state = state.copyWith(busy: false, error: error, clearMessage: true);
+      enabledBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        borderSide: BorderSide(color: scheme.primary, width: 2),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(54),
+        shape: shape,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(54),
+        shape: shape,
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: shape,
+    ),
+  );
 }
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<AppState>(controllerProvider, (_, next) {
-      final text = next.error ?? next.message;
-      if (text != null) {
+      final notice = next.error ?? next.message;
+      if (notice != null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(text)));
+        ).showSnackBar(SnackBar(content: Text(notice)));
         ref.read(controllerProvider.notifier).clearNotice();
       }
     });
     final state = ref.watch(controllerProvider);
     final profile = state.profile;
-    final (color, text) = switch (state.status) {
-      ServerStatus.online => (Colors.green, 'Server ist erreichbar'),
-      ServerStatus.offline => (Colors.grey, 'Server ist ausgeschaltet'),
-      ServerStatus.waking => (Colors.amber, 'Startsignal wurde gesendet …'),
-      ServerStatus.shuttingDown => (
-        Colors.orange,
-        'Server wird heruntergefahren …',
-      ),
-      ServerStatus.checking => (Colors.amber, 'Serverstatus wird geprüft …'),
-      ServerStatus.unknown => (Colors.blueGrey, 'Status noch nicht geprüft'),
-    };
     return Scaffold(
       appBar: AppBar(
         title: const Row(
-          children: [ServergyMark(), SizedBox(width: 10), Text('Servergy')],
+          children: [ServergyMark(), SizedBox(width: 12), Text('Servergy')],
         ),
         actions: [
           IconButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-            ),
+            tooltip: 'Diagnose',
+            onPressed: () => _open(context, const DiagnosticsScreen()),
+            icon: const Icon(Icons.article_outlined),
+          ),
+          IconButton(
+            tooltip: 'Einstellungen',
+            onPressed: () => _open(context, const SetupScreen()),
             icon: const Icon(Icons.settings_outlined),
           ),
         ],
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text(
-                'Dein Homeserver. Nur wenn du ihn brauchst.',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 20),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              text,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: state.busy
-                                ? null
-                                : () => ref
-                                      .read(controllerProvider.notifier)
-                                      .refresh(),
-                            icon: const Icon(Icons.refresh),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        profile?.name ?? 'Noch kein Homeserver eingerichtet.',
-                      ),
-                      if (profile != null) Text(profile.host),
-                      if (state.busy)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 16),
-                          child: LinearProgressIndicator(),
-                        ),
-                    ],
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: SafeArea(
+            top: false,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              children: [
+                Text(
+                  'Dein Homeserver.',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: profile == null || state.busy
-                    ? null
-                    : () => ref.read(controllerProvider.notifier).wake(),
-                icon: const Icon(Icons.keyboard_arrow_up),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Text('Server starten'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: profile == null || state.busy
-                    ? null
-                    : () async {
-                        final yes = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Server herunterfahren?'),
-                            content: Text(
-                              <String>[
-                                'Aktive Dienste auf ',
-                                profile.name,
-                                ' können unterbrochen werden.',
-                              ].join(),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Abbrechen'),
-                              ),
-                              FilledButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Herunterfahren'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (yes ?? false) {
-                          if (!context.mounted) return;
-                          await ref
-                              .read(controllerProvider.notifier)
-                              .shutdown(context);
-                        }
-                      },
-                icon: const Icon(Icons.keyboard_arrow_down),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Text('Server herunterfahren'),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: profile == null || state.busy
-                    ? null
-                    : () => ref
-                          .read(controllerProvider.notifier)
-                          .testSsh(context),
-                icon: const Icon(Icons.verified_user_outlined),
-                label: const Text('SSH-Verbindung testen'),
-              ),
-              if (profile == null)
-                FilledButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SettingsScreen(),
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lokal steuern – im Heimnetz oder über dein VPN.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  child: const Text('Homeserver einrichten'),
                 ),
-            ],
+                const SizedBox(height: 24),
+                _StatusCard(state: state),
+                const SizedBox(height: 24),
+                if (profile == null)
+                  const _SetupCallout()
+                else
+                  _Actions(profile: profile, state: state),
+              ],
+            ),
           ),
         ),
       ),
@@ -719,51 +160,363 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+void _open(BuildContext context, Widget screen) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+
+class _StatusCard extends ConsumerWidget {
+  const _StatusCard({required this.state});
+  final AppState state;
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final (icon, color, title, detail) = switch (state.status) {
+      ServerStatus.online => (
+        Icons.check_circle_rounded,
+        scheme.primary,
+        'Server ist erreichbar',
+        'Bereit für deine Dienste',
+      ),
+      ServerStatus.offline => (
+        Icons.power_settings_new_rounded,
+        scheme.outline,
+        'Server ist ausgeschaltet',
+        'Start jederzeit per Wake-on-LAN',
+      ),
+      ServerStatus.waking => (
+        Icons.wifi_tethering_rounded,
+        scheme.tertiary,
+        'Startsignal wurde gesendet',
+        'Warte, bis der Server erreichbar ist',
+      ),
+      ServerStatus.shuttingDown => (
+        Icons.keyboard_double_arrow_down_rounded,
+        scheme.tertiary,
+        'Server wird heruntergefahren',
+        'Die Verbindung wird gleich getrennt',
+      ),
+      ServerStatus.checking => (
+        Icons.sync_rounded,
+        scheme.tertiary,
+        'Serverstatus wird geprüft',
+        'Einen Moment bitte',
+      ),
+      ServerStatus.unknown => (
+        Icons.help_outline_rounded,
+        scheme.outline,
+        'Status noch nicht geprüft',
+        'Aktualisiere, um den Status zu sehen',
+      ),
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: .16),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(icon, color: color),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.profile?.name ?? 'Homeserver einrichten',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(title, style: TextStyle(color: color)),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  tooltip: 'Status aktualisieren',
+                  onPressed: state.busy
+                      ? null
+                      : ref.read(controllerProvider.notifier).refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Text(detail, style: TextStyle(color: scheme.onSurfaceVariant)),
+            if (state.profile != null) ...[
+              const SizedBox(height: 14),
+              Chip(
+                avatar: const Icon(Icons.dns_outlined, size: 18),
+                label: Text(state.profile!.host),
+              ),
+            ],
+            if (state.busy) ...[
+              const SizedBox(height: 18),
+              const LinearProgressIndicator(
+                borderRadius: BorderRadius.all(Radius.circular(99)),
+              ),
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: ref
+                    .read(controllerProvider.notifier)
+                    .cancelOperation,
+                icon: const Icon(Icons.close_rounded),
+                label: const Text('Aktion abbrechen'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final key = GlobalKey<FormState>();
-  final name = TextEditingController(text: 'Homeserver');
-  final host = TextEditingController();
-  final sshPort = TextEditingController(text: '22');
-  final user = TextEditingController();
-  final mac = TextEditingController();
-  final broadcast = TextEditingController(text: '255.255.255.255');
-  final wolPort = TextEditingController(text: '9');
-  final password = TextEditingController();
-  bool remember = false;
+class _SetupCallout extends StatelessWidget {
+  const _SetupCallout();
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Einmal einrichten',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Der Assistent prüft deine Verbindungsdaten und erklärt die sichere Einrichtung.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () => _open(context, const SetupScreen()),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Homeserver einrichten'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
+class _Actions extends ConsumerWidget {
+  const _Actions({required this.profile, required this.state});
+  final ServerProfile profile;
+  final AppState state;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(controllerProvider.notifier);
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Schnellaktionen',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: state.busy ? null : controller.wake,
+          icon: const Icon(Icons.keyboard_double_arrow_up_rounded),
+          label: const Text('Server starten'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: scheme.error,
+            side: BorderSide(color: scheme.error.withValues(alpha: .6)),
+          ),
+          onPressed: state.busy
+              ? null
+              : () => _confirmShutdown(context, controller),
+          icon: const Icon(Icons.keyboard_double_arrow_down_rounded),
+          label: const Text('Server herunterfahren'),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 8,
+            ),
+            leading: Icon(
+              Icons.verified_user_outlined,
+              color: scheme.secondary,
+            ),
+            title: const Text('SSH-Verbindung testen'),
+            subtitle: const Text('Prüft Zugangsdaten und Server-Fingerprint.'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            enabled: !state.busy,
+            onTap: () => controller.testSsh(
+              (request) => _askCredentials(context, request),
+              (fingerprint) => _confirmTrust(context, fingerprint),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _confirmShutdown(
+  BuildContext context,
+  ServerController controller,
+) async {
+  final yes = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      icon: Icon(
+        Icons.warning_amber_rounded,
+        color: Theme.of(dialog).colorScheme.error,
+      ),
+      title: const Text('Server herunterfahren?'),
+      content: const Text(
+        'Aktive Dienste können unterbrochen werden. Der Server wird über den eingeschränkten Servergy-Helper ausgeschaltet.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialog, false),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialog, true),
+          child: const Text('Herunterfahren'),
+        ),
+      ],
+    ),
+  );
+  if (yes ?? false)
+    await controller.shutdown(
+      (request) => _askCredentials(context, request),
+      (fingerprint) => _confirmTrust(context, fingerprint),
+    );
+}
+
+Future<bool> _confirmTrust(BuildContext context, String fingerprint) async =>
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialog) => AlertDialog(
+        title: const Text('SSH-Server bestätigen'),
+        content: SelectableText(
+          'Fingerprint:\n\n$fingerprint\n\nVergleiche ihn mit dem Homeserver, bevor du vertraust.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('Vertrauen'),
+          ),
+        ],
+      ),
+    ) ??
+    false;
+
+Future<SshCredentials?> _askCredentials(
+  BuildContext context,
+  CredentialRequest request,
+) async {
+  final input = TextEditingController();
+  final value = await showDialog<String>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      icon: const Icon(Icons.key_outlined),
+      title: Text(
+        request == CredentialRequest.keyPassphrase
+            ? 'Passphrase für SSH-Schlüssel'
+            : 'SSH-Passwort',
+      ),
+      content: TextField(
+        controller: input,
+        autofocus: true,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        decoration: const InputDecoration(labelText: 'Geheimnis'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialog),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialog, input.text),
+          child: const Text('Fortfahren'),
+        ),
+      ],
+    ),
+  );
+  input.dispose();
+  if (value == null || value.isEmpty) return null;
+  return request == CredentialRequest.keyPassphrase
+      ? SshCredentials(keyPassphrase: value)
+      : SshCredentials(password: value);
+}
+
+class SetupScreen extends ConsumerStatefulWidget {
+  const SetupScreen({super.key});
+  @override
+  ConsumerState<SetupScreen> createState() => _SetupScreenState();
+}
+
+class _SetupScreenState extends ConsumerState<SetupScreen> {
+  final _form = GlobalKey<FormState>();
+  final _name = TextEditingController(text: 'Homeserver');
+  final _host = TextEditingController();
+  final _sshPort = TextEditingController(text: '22');
+  final _user = TextEditingController();
+  final _mac = TextEditingController();
+  final _broadcast = TextEditingController(text: '255.255.255.255');
+  final _wolPort = TextEditingController(text: '9');
+  final _password = TextEditingController();
+  var _step = 0;
+  var _mode = AuthenticationMode.keyPreferred;
+  String? _keyPem;
   @override
   void initState() {
     super.initState();
     final p = ref.read(controllerProvider).profile;
     if (p != null) {
-      name.text = p.name;
-      host.text = p.host;
-      sshPort.text = p.sshPort.toString();
-      user.text = p.username;
-      mac.text = p.mac.toString();
-      broadcast.text = p.broadcast;
-      wolPort.text = p.wolPort.toString();
-      remember = p.rememberPassword;
+      _name.text = p.name;
+      _host.text = p.host;
+      _sshPort.text = '${p.sshPort}';
+      _user.text = p.username;
+      _mac.text = '${p.mac}';
+      _broadcast.text = p.broadcast;
+      _wolPort.text = '${p.wolPort}';
+      _mode = p.authenticationMode;
     }
   }
 
   @override
   void dispose() {
     for (final item in [
-      name,
-      host,
-      sshPort,
-      user,
-      mac,
-      broadcast,
-      wolPort,
-      password,
+      _name,
+      _host,
+      _sshPort,
+      _user,
+      _mac,
+      _broadcast,
+      _wolPort,
+      _password,
     ]) {
       item.dispose();
     }
@@ -772,155 +525,331 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Einstellungen')),
-    body: Form(
-      key: key,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('Server', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          _field(name, 'Anzeigename'),
-          _field(host, 'Hostname oder IP-Adresse'),
-          _field(sshPort, 'SSH-Port', number: true),
-          _field(user, 'SSH-Benutzername'),
-          const SizedBox(height: 16),
-          Text('Wake-on-LAN', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          _field(mac, 'MAC-Adresse'),
-          _field(broadcast, 'Broadcast-Adresse'),
-          _field(wolPort, 'UDP-Port', number: true),
-          const SizedBox(height: 16),
-          Text('Zugang', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: password,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Passwort',
-              helperText:
-                  'Leer lassen, um ein gespeichertes Passwort zu behalten.',
+    appBar: AppBar(
+      title: Text(
+        ref.read(controllerProvider).profile == null
+            ? 'Homeserver einrichten'
+            : 'Einstellungen',
+      ),
+    ),
+    body: SafeArea(
+      top: false,
+      child: Form(
+        key: _form,
+        child: Stepper(
+          currentStep: _step,
+          onStepCancel: _step == 0
+              ? () => Navigator.pop(context)
+              : () => setState(() => _step--),
+          onStepContinue: _continue,
+          controlsBuilder: (context, details) => Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: details.onStepContinue,
+                    child: Text(_step == 4 ? 'Speichern' : 'Weiter'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                TextButton(
+                  onPressed: details.onStepCancel,
+                  child: Text(_step == 0 ? 'Abbrechen' : 'Zurück'),
+                ),
+              ],
             ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: remember,
-            onChanged: (value) => setState(() => remember = value),
-            title: const Text('Passwort sicher speichern'),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _save,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Einstellungen speichern'),
+          steps: [
+            Step(
+              title: const Text('Netzwerkgrenze'),
+              isActive: _step >= 0,
+              content: const _StepInfo(
+                icon: Icons.home_outlined,
+                text:
+                    'Servergy steuert deinen Server nur im Heimnetz oder über ein bereits eingerichtetes VPN. Wake-on-LAN benötigt einen Netzwerkpfad für Broadcast-Pakete; viele VPNs leiten diese nicht weiter.',
+              ),
             ),
-          ),
-        ],
+            Step(
+              title: const Text('Serververbindung'),
+              isActive: _step >= 1,
+              content: Column(
+                children: [
+                  _field(_name, 'Anzeigename', Icons.badge_outlined),
+                  _field(_host, 'Hostname oder IP-Adresse', Icons.lan_outlined),
+                  _field(
+                    _sshPort,
+                    'SSH-Port',
+                    Icons.settings_ethernet_rounded,
+                    number: true,
+                  ),
+                  _field(
+                    _user,
+                    'SSH-Benutzername',
+                    Icons.person_outline_rounded,
+                  ),
+                ],
+              ),
+            ),
+            Step(
+              title: const Text('Wake-on-LAN'),
+              isActive: _step >= 2,
+              content: Column(
+                children: [
+                  _field(_mac, 'MAC-Adresse', Icons.memory_rounded),
+                  _field(
+                    _broadcast,
+                    'Broadcast-Adresse',
+                    Icons.broadcast_on_home_outlined,
+                  ),
+                  _field(
+                    _wolPort,
+                    'UDP-Port',
+                    Icons.send_to_mobile_outlined,
+                    number: true,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Tipp: Nutze die Broadcast-Adresse deines Subnetzes. 255.255.255.255 funktioniert nicht in jedem Netz.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Step(
+              title: const Text('SSH-Zugang'),
+              isActive: _step >= 3,
+              content: _authStep(),
+            ),
+            Step(
+              title: const Text('Prüfen und speichern'),
+              isActive: _step >= 4,
+              content: const _StepInfo(
+                icon: Icons.verified_user_outlined,
+                text:
+                    'Speichere die Konfiguration und teste danach die SSH-Verbindung. Beim ersten Kontakt vergleichst du den angezeigten Server-Fingerprint mit deinem Homeserver.',
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
-
+  Widget _authStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      RadioListTile<AuthenticationMode>(
+        value: AuthenticationMode.keyPreferred,
+        groupValue: _mode,
+        onChanged: (v) => setState(() => _mode = v!),
+        title: const Text('SSH-Schlüssel (empfohlen)'),
+        subtitle: Text(
+          _keyPem == null
+              ? 'Importiere einen privaten OpenSSH-, RSA- oder EC-Schlüssel.'
+              : 'Schlüssel ist für den Import ausgewählt.',
+        ),
+        secondary: const Icon(Icons.key_outlined),
+      ),
+      if (_mode == AuthenticationMode.keyPreferred)
+        OutlinedButton.icon(
+          onPressed: _importKey,
+          icon: const Icon(Icons.file_open_outlined),
+          label: Text(
+            _keyPem == null
+                ? 'Schlüsseldatei auswählen'
+                : 'Schlüsseldatei ändern',
+          ),
+        ),
+      RadioListTile<AuthenticationMode>(
+        value: AuthenticationMode.passwordOnly,
+        groupValue: _mode,
+        onChanged: (v) => setState(() => _mode = v!),
+        title: const Text('Passwort'),
+        subtitle: const Text(
+          'Das Passwort kann optional sicher auf diesem Gerät gespeichert werden.',
+        ),
+        secondary: const Icon(Icons.password_outlined),
+      ),
+      if (_mode == AuthenticationMode.passwordOnly)
+        TextFormField(
+          controller: _password,
+          obscureText: true,
+          enableSuggestions: false,
+          autocorrect: false,
+          decoration: const InputDecoration(
+            labelText: 'SSH-Passwort',
+            helperText: 'Leer lassen: bei jeder Aktion nachfragen.',
+          ),
+        ),
+    ],
+  );
   Widget _field(
     TextEditingController controller,
-    String label, {
+    String label,
+    IconData icon, {
     bool number = false,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: TextFormField(
       controller: controller,
       keyboardType: number ? TextInputType.number : null,
-      validator: (value) => value == null || value.trim().isEmpty
-          ? '$label ist erforderlich.'
-          : null,
-      decoration: InputDecoration(labelText: label),
+      validator: (v) =>
+          v == null || v.trim().isEmpty ? '$label ist erforderlich.' : null,
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
     ),
   );
-  Future<void> _save() async {
-    if (!key.currentState!.validate()) {
-      return;
-    }
+  Future<void> _importKey() async {
+    final file = await FilePicker.pickFile(type: FileType.any);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
     try {
-      final ssh = int.parse(sshPort.text);
-      final wol = int.parse(wolPort.text);
-      if (ssh < 1 || ssh > 65535 || wol < 1 || wol > 65535) {
-        throw const ServergyError('Ports müssen zwischen 1 und 65535 liegen.');
-      }
-      if (InternetAddress.tryParse(broadcast.text.trim())?.type !=
-          InternetAddressType.IPv4) {
-        throw const ServergyError(
-          'Die Broadcast-Adresse muss eine IPv4-Adresse sein.',
-        );
-      }
-      await ref
-          .read(controllerProvider.notifier)
-          .save(
-            ServerProfile(
-              name: name.text.trim(),
-              host: host.text.trim(),
-              sshPort: ssh,
-              username: user.text.trim(),
-              mac: MacAddress.parse(mac.text),
-              broadcast: broadcast.text.trim(),
-              wolPort: wol,
-              rememberPassword: remember,
-            ),
-            password.text,
-          );
-      if (mounted) Navigator.pop(context);
+      final pem = utf8.decode(bytes);
+      if (!pem.contains('PRIVATE KEY')) throw const FormatException();
+      setState(() => _keyPem = pem);
     } on FormatException {
-      _notice('Ports müssen gültige Zahlen sein.');
-    } on ServergyError catch (e) {
-      _notice(e.message);
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Die Datei enthält keinen unterstützten privaten SSH-Schlüssel.',
+            ),
+          ),
+        );
     }
   }
 
-  void _notice(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  Future<void> _continue() async {
+    if (_step < 3) {
+      setState(() => _step++);
+      return;
+    }
+    if (_step == 3) {
+      if (_mode == AuthenticationMode.keyPreferred &&
+          _keyPem == null &&
+          ref.read(controllerProvider).profile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Wähle einen SSH-Schlüssel oder nutze Passwort-Anmeldung.',
+            ),
+          ),
+        );
+        return;
+      }
+      setState(() => _step++);
+      return;
+    }
+    if (!_form.currentState!.validate()) return;
+    try {
+      final profile = ServerProfile(
+        name: _name.text.trim(),
+        host: validateHost(_host.text),
+        sshPort: validatePort(_sshPort.text, label: 'SSH-Port'),
+        username: _user.text.trim(),
+        mac: MacAddress.parse(_mac.text),
+        broadcast: validateBroadcast(_broadcast.text),
+        wolPort: validatePort(_wolPort.text, label: 'UDP-Port'),
+        authenticationMode: _mode,
+      );
+      await ref
+          .read(controllerProvider.notifier)
+          .saveProfile(
+            profile,
+            password: _password.text.isEmpty ? null : _password.text,
+            privateKeyPem: _keyPem,
+          );
+      if (mounted) Navigator.pop(context);
+    } on ServergyError catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
 }
 
-class _PasswordDialog extends StatefulWidget {
-  const _PasswordDialog({required this.controller});
-  final TextEditingController controller;
+class _StepInfo extends StatelessWidget {
+  const _StepInfo({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
   @override
-  State<_PasswordDialog> createState() => _PasswordDialogState();
-}
-
-class _PasswordDialogState extends State<_PasswordDialog> {
-  bool remember = false;
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('SSH-Passwort'),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(
-          controller: widget.controller,
-          autofocus: true,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Passwort'),
-        ),
-        CheckboxListTile(
-          value: remember,
-          onChanged: (value) => setState(() => remember = value ?? false),
-          title: const Text('Sicher speichern'),
-        ),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Abbrechen'),
-      ),
-      FilledButton(
-        onPressed: () => Navigator.pop(context, (
-          password: widget.controller.text,
-          remember: remember,
-        )),
-        child: const Text('Fortfahren'),
-      ),
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, color: Theme.of(context).colorScheme.secondary),
+      const SizedBox(width: 12),
+      Expanded(child: Text(text)),
     ],
   );
+}
+
+class DiagnosticsScreen extends ConsumerWidget {
+  const DiagnosticsScreen({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(controllerProvider).diagnostics.reversed.toList();
+    final report = events.map((e) => e.toExportLine()).join('\n');
+    return Scaffold(
+      appBar: AppBar(title: const Text('Diagnose')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            'Lokales Diagnoseprotokoll',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Es enthält keine Passwörter, Schlüssel, Benutzernamen, Hostadressen oder MAC-Adressen.',
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: events.isEmpty ? null : () => _export(context, report),
+            icon: const Icon(Icons.save_alt_outlined),
+            label: const Text('Redigierte Diagnose exportieren'),
+          ),
+          const SizedBox(height: 16),
+          if (events.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('Noch keine Diagnoseereignisse vorhanden.'),
+              ),
+            ),
+          for (final event in events)
+            Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: Icon(
+                  event.success
+                      ? Icons.check_circle_outline
+                      : Icons.error_outline,
+                  color: event.success
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
+                ),
+                title: Text(event.action.name),
+                subtitle: Text('${event.at} · ${event.code}'),
+                trailing: Text('${event.duration.inMilliseconds} ms'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _export(BuildContext context, String report) async {
+    final path = await FilePicker.saveFile(
+      fileName: 'servergy-diagnose.txt',
+      bytes: utf8.encode('$report\n'),
+    );
+    if (context.mounted && path != null)
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Diagnose exportiert.')));
+  }
 }
 
 class ServergyMark extends StatelessWidget {

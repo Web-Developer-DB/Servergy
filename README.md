@@ -7,19 +7,26 @@ unnötig und bleibt mit einem Knopfdruck verfügbar.
 Der aktuelle Entwicklungsstand enthält einen nutzbaren ersten End-to-End-Stand
 für Android, Linux und Windows:
 
-- Homeserver-Profil mit Host, SSH-Benutzer, MAC- und Broadcast-Adresse
+- geführtes Homeserver-Onboarding mit Host, SSH-Benutzer, MAC- und Broadcast-Adresse
 - Wake-on-LAN mit drei Magic Packets
 - Erreichbarkeitsprüfung über den SSH-Port
 - SSH-Verbindungstest und kontrolliertes Herunterfahren
-- sichere Passwortablage über den jeweiligen System-Schlüsselspeicher
+- importierbare SSH-Privatschlüssel mit Passwort-Fallback
+- sichere Passwort- und Schlüsselablage über den jeweiligen System-Schlüsselspeicher
 - SSH-Host-Key-Prüfung mit expliziter Bestätigung beim ersten Kontakt
+- abbrechbare Start- und Ausschaltvorgänge sowie redigiertes lokales Diagnoseprotokoll
 
 ## Voraussetzungen
 
 Servergy verwaltet bewusst **genau einen** Homeserver. Der Server muss über das
-lokale Netzwerk erreichbar sein, wenn er läuft. Für das Starten müssen
+lokale Netzwerk oder ein bereits eingerichtetes VPN erreichbar sein, wenn er
+läuft. Für das Starten müssen
 Wake-on-LAN im BIOS/UEFI und im Betriebssystem beziehungsweise im
 Netzwerkadapter aktiviert sein.
+
+Wake-on-LAN benötigt einen Broadcast-Pfad; viele VPNs leiten Broadcasts nicht
+weiter. In diesem Fall funktioniert die SSH-Steuerung über VPN, das Einschalten
+aber nur im Heimnetz oder über einen selbst betriebenen WOL-Relay.
 
 Für das sichere Ausschalten verlangt die App nicht einen frei wählbaren
 sudo-Befehl. Stattdessen führt sie ausschließlich
@@ -54,10 +61,15 @@ libsecret-1-0.
   blockiert.
 - Die Key-Vertrauensentscheidung ist an Host und SSH-Port gebunden.
 - Der Ausschaltbefehl ist auf einen festen Server-Helper beschränkt.
+- Die App nutzt keinen Hintergrunddienst, keine Cloud und keine Telemetrie.
+- Das exportierbare Diagnoseprotokoll enthält keine Zugangsdaten, Schlüssel,
+  Benutzernamen, Hostadressen oder MAC-Adressen.
+
+Details zur lokalen Datenverarbeitung stehen in [docs/privacy.md](docs/privacy.md).
 
 ## Status
 
-Dies ist ein erster funktionaler Entwicklungsstand. Vor einer Veröffentlichung
-folgen noch App-Icons, Android-spezifische Berechtigungsprüfung auf aktuellen
-Versionen, weitere Tests sowie ein Test auf echten Android-, Ubuntu- und
-Windows-Geräten.
+Der Funktionsumfang ist für einen ersten Release vorbereitet. Vor einem echten
+Release müssen die Checkliste in [docs/release-checklist.md](docs/release-checklist.md)
+abgearbeitet, echte Plattformtests durchgeführt und die GitHub-Signing-Secrets
+hinterlegt werden.

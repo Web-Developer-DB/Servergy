@@ -1,0 +1,16 @@
+# Datenschutz und lokale Daten
+
+Servergy arbeitet ohne Cloud, Benutzerkonto, Tracking oder Telemetrie. Die App
+stellt ausschließlich lokale Netzwerk- und SSH-Verbindungen zu dem von dir
+eingerichteten Homeserver her.
+
+Nicht geheime Profildaten (Name, Host, Ports, MAC- und Broadcast-Adresse)
+liegen lokal in den App-Einstellungen. Passwörter, importierte private
+SSH-Schlüssel und bestätigte SSH-Host-Keys liegen ausschließlich im
+Schlüsselspeicher des Betriebssystems. Passphrasen für verschlüsselte Schlüssel
+werden nur für die laufende Verbindung verwendet.
+
+Das optionale Diagnoseprotokoll bleibt lokal. Es enthält Zeit, Aktion,
+Ergebnis, Fehlercode und Dauer, aber keine Zugangsdaten, Schlüssel,
+Benutzernamen, vollständigen Hostadressen oder MAC-Adressen. Ein Export erfolgt
+nur nach einer ausdrücklichen Auswahl im Diagnose-Bildschirm.
