@@ -13,10 +13,18 @@ final controllerProvider = NotifierProvider<ServerController, AppState>(
   ServerController.new,
 );
 
-final discoveryProvider =
-    NotifierProvider<DiscoveryController, DiscoveryState>(DiscoveryController.new);
+final discoveryProvider = NotifierProvider<DiscoveryController, DiscoveryState>(
+  DiscoveryController.new,
+);
 
-enum DiscoveryStatus { idle, preparing, searching, completed, cancelled, failed }
+enum DiscoveryStatus {
+  idle,
+  preparing,
+  searching,
+  completed,
+  cancelled,
+  failed,
+}
 
 class DiscoveryState {
   const DiscoveryState({
@@ -32,7 +40,8 @@ class DiscoveryState {
   final String? error;
 
   bool get isSearching =>
-      status == DiscoveryStatus.preparing || status == DiscoveryStatus.searching;
+      status == DiscoveryStatus.preparing ||
+      status == DiscoveryStatus.searching;
 }
 
 /// Owns a short-lived, user-triggered discovery run. It intentionally has its
@@ -86,13 +95,17 @@ class DiscoveryController extends Notifier<DiscoveryState> {
       }
     } on ServergyError catch (error) {
       if (_active(token)) {
-        state = DiscoveryState(status: DiscoveryStatus.failed, error: error.message);
+        state = DiscoveryState(
+          status: DiscoveryStatus.failed,
+          error: error.message,
+        );
       }
     } catch (_) {
       if (_active(token)) {
         state = const DiscoveryState(
           status: DiscoveryStatus.failed,
-          error: 'Die Serversuche konnte nicht gestartet werden. Gib die Adresse manuell ein.',
+          error:
+              'Die Serversuche konnte nicht gestartet werden. Gib die Adresse manuell ein.',
         );
       }
     }
@@ -250,7 +263,8 @@ class ServerController extends Notifier<AppState> {
         prompt: credentials,
       );
       if (auth == null || !_active(token)) {
-        if (_active(token)) _complete(token, ServerStatus.unknown, 'Prüfung abgebrochen.');
+        if (_active(token))
+          _complete(token, ServerStatus.unknown, 'Prüfung abgebrochen.');
         return false;
       }
       await _sshService.test(profile, auth, onUnknownHostKey: trust);
@@ -268,10 +282,16 @@ class ServerController extends Notifier<AppState> {
         ServerStatus.online,
         'SSH-Verbindung geprüft und Einstellungen sicher gespeichert.',
       );
-      await _record(DiagnosticAction.configuration, true, 'verified', watch.elapsed);
+      await _record(
+        DiagnosticAction.configuration,
+        true,
+        'verified',
+        watch.elapsed,
+      );
       return true;
     } on ServergyError catch (error) {
-      if (_active(token)) _fail(error, DiagnosticAction.configuration, watch.elapsed);
+      if (_active(token))
+        _fail(error, DiagnosticAction.configuration, watch.elapsed);
       return false;
     } on SSHAuthFailError {
       if (_active(token)) {
@@ -321,7 +341,8 @@ class ServerController extends Notifier<AppState> {
     if (!await _localAccess.ensureAllowed()) {
       state = state.copyWith(
         status: ServerStatus.unknown,
-        error: 'Die Freigabe für das lokale Netzwerk fehlt. Erlaube sie in Android und aktualisiere danach erneut.',
+        error:
+            'Die Freigabe für das lokale Netzwerk fehlt. Erlaube sie in Android und aktualisiere danach erneut.',
         clearMessage: true,
       );
       await _record(
@@ -549,10 +570,7 @@ class ServerController extends Notifier<AppState> {
         ))?.keyPassphrase;
         if (passphrase == null || passphrase.isEmpty) return null;
       }
-      return SshCredentials(
-        privateKeyPem: key,
-        keyPassphrase: passphrase,
-      );
+      return SshCredentials(privateKeyPem: key, keyPassphrase: passphrase);
     }
     if (profile.authenticationMode == AuthenticationMode.keyPreferred) {
       throw const ServergyError(
@@ -596,7 +614,9 @@ class ServerController extends Notifier<AppState> {
     }
     String? passphrase;
     if (SSHKeyPair.isEncryptedPem(key)) {
-      passphrase = (await prompt(CredentialRequest.keyPassphrase))?.keyPassphrase;
+      passphrase = (await prompt(
+        CredentialRequest.keyPassphrase,
+      ))?.keyPassphrase;
       if (passphrase == null || passphrase.isEmpty) return null;
     }
     return SshCredentials(privateKeyPem: key, keyPassphrase: passphrase);

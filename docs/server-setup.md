@@ -47,8 +47,12 @@ sudo adduser servergy
 explizit freigegebenen Ausschalt-Helper aufrufen; eine Gruppenmitgliedschaft
 wäre deutlich weitergehender Zugriff als nötig.
 
-Die App unterstützt SSH-Schlüssel (empfohlen) und Passwort-Anmeldung als
-Fallback. Lege für den Zugriff einen eigenen Schlüssel an:
+Die App unterstützt zwei getrennte SSH-Anmeldemethoden: einen privaten
+Schlüssel (empfohlen) oder Passwort-Anmeldung. Im Passwort-Modus speichert die
+App das Passwort nach erfolgreichem Verbindungstest sicher im
+Betriebssystem-Schlüsselspeicher, damit es später nicht erneut eingegeben
+werden muss. Ein Passwort wird nicht als Fallback neben einem Schlüssel
+gespeichert. Lege für den empfohlenen Zugriff einen eigenen Schlüssel an:
 
 ~~~bash
 ssh-keygen -t ed25519 -f ~/.ssh/servergy_ed25519 -C 'Servergy homeserver control'

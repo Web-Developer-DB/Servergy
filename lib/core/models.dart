@@ -29,7 +29,8 @@ class SecretUpdate {
 
   const SecretUpdate.keep() : this._(SecretUpdateKind.keep, null);
   const SecretUpdate.delete() : this._(SecretUpdateKind.delete, null);
-  const SecretUpdate.replace(String value) : this._(SecretUpdateKind.replace, value);
+  const SecretUpdate.replace(String value)
+    : this._(SecretUpdateKind.replace, value);
 
   final SecretUpdateKind kind;
   final String? value;
@@ -100,7 +101,9 @@ class WakeOnLanSettings {
   static WakeOnLanSettings fromJson(Map<String, dynamic> json) =>
       WakeOnLanSettings(
         mac: MacAddress.parse(ServerProfile.requiredString(json, 'mac')),
-        broadcast: validateBroadcast(ServerProfile.requiredString(json, 'broadcast')),
+        broadcast: validateBroadcast(
+          ServerProfile.requiredString(json, 'broadcast'),
+        ),
         port: validatePort(json['port'], label: 'UDP-Port'),
       );
 }
