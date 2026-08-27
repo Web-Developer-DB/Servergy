@@ -11,7 +11,7 @@ Router-, VPN- oder Wake-on-LAN-Kombination.
 
 Vor jedem Beta-Tag müssen erfolgreich sein:
 
-- `dart format --output=none --set-exit-if-changed lib test`
+- `dart format --output=none --set-exit-if-changed lib test tool`
 - `flutter analyze`
 - `flutter test`
 - Android-, Linux- und Windows-Debug-Build in Pull-Request-CI
