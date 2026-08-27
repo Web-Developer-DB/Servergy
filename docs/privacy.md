@@ -20,4 +20,4 @@ werden nur für die laufende Verbindung verwendet.
 Das optionale Diagnoseprotokoll bleibt lokal. Es enthält Zeit, Aktion,
 Ergebnis, Fehlercode und Dauer, aber keine Zugangsdaten, Schlüssel,
 Benutzernamen, vollständigen Hostadressen oder MAC-Adressen. Ein Export erfolgt
-nur nach einer ausdrücklichen Auswahl im Diagnose-Bildschirm.
+nur nach einer ausdrücklichen Auswahl im Bereich „Ereignisse“.

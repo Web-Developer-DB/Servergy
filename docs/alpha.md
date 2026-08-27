@@ -18,7 +18,7 @@ WOL-Kombination unterstützt wird.
 - feste Shutdown-Kommandokette mit Bestätigungsantwort
 - 90-Sekunden-WOL-Polling und 60-Sekunden-Shutdown-Polling
 - lokales Diagnoseprotokoll ohne sensible Endpunktdaten
-- responsive Stepper-Oberfläche für kleine Displays
+- fokussierter Einrichtungsassistent mit Fortschrittsanzeige für kleine Displays
 
 ## Bekannte Alpha-Grenzen
 

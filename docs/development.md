@@ -75,7 +75,7 @@ Testreihenfolge:
 4. Den angezeigten Host-Key direkt am Server vergleichen.
 5. Prüfen, dass das Passwort nach einem App-Neustart nicht erneut abgefragt wird.
 6. WOL konfigurieren; der Server muss hierfür noch eingeschaltet sein.
-7. Falls der Helper noch fehlt: **Einstellungen → Server später starten →
+7. Falls der Helper noch fehlt: **Einstellungen → Sicheres Herunterfahren →
    Server vorbereiten** wählen, die angekündigten Änderungen bestätigen und
    ein einmaliges sudo-Passwort eingeben. Es darf nicht nach einem App-Neustart
    erneut abgefragt oder gespeichert angezeigt werden.

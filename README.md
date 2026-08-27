@@ -108,7 +108,7 @@ Hostadressen oder MAC-Adressen exportiert. Siehe
 ## Servergy-Ausschalt-Helfer auf dem Homeserver
 
 Nach einer erfolgreichen SSH-Einrichtung kann die App unter
-**Einstellungen → Server später starten → Server vorbereiten** den sicheren
+**Einstellungen → Sicheres Herunterfahren → Server vorbereiten** den sicheren
 Ausschalt-Helfer einmalig auf einem Debian-System mit systemd einrichten. Die
 Aktion ist immer bestätigt und verlangt ein **temporäres sudo-Passwort** des
 konfigurierten SSH-Benutzers. Dieses Passwort wird nur über die laufende
@@ -155,7 +155,7 @@ einen realen Debian-Test für Installation, Shutdown und Entfernung ausführen.
 
 ### Helper wieder entfernen
 
-In der App steht dafür unter **Einstellungen → Server später starten →
+In der App steht dafür unter **Einstellungen → Sicheres Herunterfahren →
 Installierten Helper entfernen** eine bestätigte Aktion bereit. Sie prüft den
 SSH-Fingerprint erneut, fordert ein einmaliges sudo-Passwort an und entfernt
 genau die unten genannten Dateien. SSH, Wake-on-LAN und das lokale
@@ -189,7 +189,7 @@ lib/
   core/models.dart       Domänenmodelle, Validierung und Profilmigration
   core/services.dart     Preferences, Secure Storage, WOL, Discovery und SSH
   core/controller.dart   Riverpod-Zustände und abbrechbare Abläufe
-  servergy_app.dart      Dashboard, Onboarding, Einstellungen und Diagnose
+  servergy_app.dart      Dashboard, Onboarding, Einstellungen und Ereignisse
   main.dart              Flutter-Einstiegspunkt
 android/                 Android-Manifest und lokale Netzwerk-MethodChannel
 docs/server-setup.md     Server- und sudoers-Einrichtung

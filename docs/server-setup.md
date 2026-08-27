@@ -84,7 +84,7 @@ sudo systemctl status ssh
 ### Bequemer Weg: einmalig mit Servergy vorbereiten
 
 Wenn die SSH-Verbindung in Servergy bereits geprüft ist, öffne
-**Einstellungen → Server später starten → Server vorbereiten**. Nach einer
+**Einstellungen → Sicheres Herunterfahren → Server vorbereiten**. Nach einer
 ausdrücklichen Bestätigung fragt die App einmalig nach dem sudo-Passwort des
 konfigurierten SSH-Benutzers. Dieses Passwort wird nur über die bestehende
 SSH-Verbindung verwendet und weder angezeigt noch gespeichert.
