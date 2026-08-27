@@ -17,6 +17,20 @@ Die Benutzeroberfläche kennt keine SSH-Shell und nimmt keine freien Befehle vom
 Benutzer entgegen. Die beiden Remote-Kommandos sind im SSH-Dienst konstant:
 `printf servergy-ok` für den Test und der feste sudo-Helper für den Poweroff.
 
+## Einmalige Servervorbereitung
+
+Die optionale Servervorbereitung ist vom normalen `SshGateway` getrennt. Sie
+akzeptiert keine Dateien, Pfade oder Befehle aus der Oberfläche, sondern
+verwendet drei versionierte App-Payloads: den Helper, die systemd-Unit und eine
+validierte, eng begrenzte sudoers-Datei. Die beiden statischen Dateien werden
+vor dem Upload per SHA-256 geprüft. Der SSH-Benutzername muss einem strikten
+Linux-Namen entsprechen, bevor er in sudoers geschrieben werden darf.
+
+Das einmal eingegebene sudo-Passwort gelangt ausschließlich über stdin einer
+kurzlebigen SSH-Session zu `sudo -S`; es ist weder Teil eines Remote-Befehls
+noch Teil von Profil, Secure Storage oder Diagnose. Die Einrichtung startet
+den Helper nie selbst und fährt den Server daher nicht versehentlich herunter.
+
 ## Schichten und Datenfluss
 
 ~~~text
@@ -30,6 +44,7 @@ Fachliche Gateways
     ├── NetworkGateway       TCP-Erreichbarkeit und Wake-on-LAN
     ├── DiscoveryGateway     Netzbereich, mDNS und SSH-Port-Suche
     ├── SshGateway           SSH-Handshake, Authentifizierung, Befehle
+    ├── ServerProvisioningGateway  Einmalige, bestätigte Helper-Installation
     └── ProfileStore         Profil, Secure Storage, Diagnose
     ▼
 Betriebssystem / Netzwerk / Homeserver
@@ -98,6 +113,23 @@ Die Suche startet nur nach einem sichtbaren Klick:
 
 Die Suche beweist nicht die Identität des Geräts. Erst SSH-Authentifizierung
 und Host-Key-Bestätigung machen einen Kandidaten zum vertrauenswürdigen Server.
+
+## SSH-Einrichtung und automatische WOL-Erkennung
+
+Der Assistent speichert das Profil erst nach einem erfolgreichen SSH-Test. Auf
+einem neuen Steuergerät zeigt er bei der ersten Verbindung Schlüsseltyp und
+kanonischen SHA-256-Fingerprint; der Nutzer bestätigt diesen bewusst. Ein
+importierter privater Schlüssel ersetzt diese Prüfung nicht. Passwort und
+privater Schlüssel werden erst nach diesem Test im Secure Storage abgelegt;
+eine Schlüssel-Passphrase bleibt nur im Arbeitsspeicher.
+
+Danach kann die optionale WOL-Erkennung einen festen Debian-Befehl über die
+bereits vertraute SSH-Verbindung ausführen. Er bestimmt den Adapter der
+Standardroute und liest ausschließlich dessen MAC-Adresse aus `/sys/class/net`.
+Die lokale Broadcast-Adresse kommt aus demselben `NetworkScope`, den auch die
+Serversuche nutzt. Adaptername und Vorschlag werden nur angezeigt; persistent
+bleiben nach einer sichtbaren Nutzerentscheidung allein MAC, Broadcast und
+UDP-Port.
 
 ## Start- und Shutdown-Abläufe
 

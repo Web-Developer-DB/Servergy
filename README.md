@@ -105,6 +105,83 @@ Dauer. Es werden keine Passwörter, Schlüssel, Benutzernamen, vollständigen
 Hostadressen oder MAC-Adressen exportiert. Siehe
 [docs/privacy.md](docs/privacy.md).
 
+## Servergy-Ausschalt-Helfer auf dem Homeserver
+
+Nach einer erfolgreichen SSH-Einrichtung kann die App unter
+**Einstellungen → Server später starten → Server vorbereiten** den sicheren
+Ausschalt-Helfer einmalig auf einem Debian-System mit systemd einrichten. Die
+Aktion ist immer bestätigt und verlangt ein **temporäres sudo-Passwort** des
+konfigurierten SSH-Benutzers. Dieses Passwort wird nur über die laufende
+SSH-Verbindung an `sudo` übergeben; es wird nicht in der App gespeichert,
+protokolliert oder erneut angezeigt.
+
+Der Assistent installiert ausschließlich diese drei Dateien:
+
+| Datei | Eigentümer und Rechte | Zweck |
+| --- | --- | --- |
+| `/usr/local/sbin/servergy-poweroff` | `root:root`, `0755` | Argumentloser Helper. Er startet nur die unten genannte Unit und antwortet der App mit `servergy-poweroff-accepted`. |
+| `/etc/systemd/system/servergy-poweroff.service` | `root:root`, `0644` | systemd-Oneshot-Unit. Sie wartet zwei Sekunden, damit die SSH-Antwort ankommt, und führt danach `systemctl poweroff --no-block` aus. |
+| `/etc/sudoers.d/servergy` | `root:root`, `0440` | Erlaubt ausschließlich dem in Servergy eingetragenen SSH-Benutzer ohne Passwort den einen Helper-Aufruf. Sie erlaubt weder eine Shell noch `shutdown`, `systemctl` oder andere sudo-Befehle. |
+
+Der Assistent prüft vor der Installation den SSH-Fingerprint, den festen
+Payload per SHA-256, die sudoers-Syntax sowie die Rechte der installierten
+Helper- und Unit-Datei. Er startet den Helper nicht während der Installation;
+der Server bleibt eingeschaltet. Der erste über die App bestätigte Shutdown ist
+der eigentliche Funktionsnachweis.
+
+### Wo Entwickler die installierten Skripte im Projekt finden
+
+Die Vorlagen liegen absichtlich als versionierte, unveränderliche Dart-Strings
+im Quellcode und nicht als vom Nutzer auswählbare Dateien:
+
+| Serverdatei | Quellstelle im Projekt |
+| --- | --- |
+| `/usr/local/sbin/servergy-poweroff` | `lib/core/services.dart` → `ServergyProvisioningPayload.helper` |
+| `/etc/systemd/system/servergy-poweroff.service` | `lib/core/services.dart` → `ServergyProvisioningPayload.service` |
+| `/etc/sudoers.d/servergy` | `lib/core/services.dart` → `ServergyProvisioningPayload.sudoersFor(...)` |
+
+`SshService.provisionPoweroffHelper(...)` in derselben Datei steuert Upload,
+temporäres Staging, sudo-Aufrufe, Rechteprüfung und Bereinigung. Die
+Benutzerführung liegt in `lib/servergy_app.dart`; der koordinierende Ablauf mit
+SSH- und Host-Key-Prüfung in `lib/core/controller.dart`.
+
+**Wichtig bei Änderungen:** Helper und Unit haben in
+`ServergyProvisioningPayload` feste SHA-256-Werte. Werden deren Inhalte
+verändert, müssen die passenden Hash-Konstanten mitgeändert werden; andernfalls
+bricht die App die Installation absichtlich vor dem Upload ab. Änderungen an
+der sudoers-Vorlage müssen weiterhin auf genau den argumentlosen Helper
+beschränkt bleiben. Danach mindestens `flutter analyze`, `flutter test` und
+einen realen Debian-Test für Installation, Shutdown und Entfernung ausführen.
+
+### Helper wieder entfernen
+
+In der App steht dafür unter **Einstellungen → Server später starten →
+Installierten Helper entfernen** eine bestätigte Aktion bereit. Sie prüft den
+SSH-Fingerprint erneut, fordert ein einmaliges sudo-Passwort an und entfernt
+genau die unten genannten Dateien. SSH, Wake-on-LAN und das lokale
+Verbindungsprofil bleiben erhalten. Der SSH-Benutzer benötigt für die
+Entfernung normale sudo-Administratorrechte; die absichtlich enge
+Servergy-sudoers-Regel erlaubt nur das Herunterfahren und reicht dafür nicht.
+
+Die folgenden Befehle müssen lokal am Server oder über einen **separat
+berechtigten Administratorzugang** ausgeführt werden. Entferne zuerst die
+sudoers-Regel: Danach kann die App den Server nicht mehr ausschalten, Wake-on-
+LAN und die normale SSH-Verbindung bleiben aber unverändert.
+
+~~~bash
+sudo rm /etc/sudoers.d/servergy
+sudo rm /usr/local/sbin/servergy-poweroff
+sudo rm /etc/systemd/system/servergy-poweroff.service
+sudo systemctl daemon-reload
+sudo visudo -c
+~~~
+
+Diese Befehle entfernen nur die drei Servergy-Ausschaltdateien. Das Löschen der
+Verbindung in der App entfernt dagegen ausschließlich lokale App-Daten wie
+Profil, Schlüssel, SSH-Passwort und bestätigten Host-Key; es verändert nie den
+Homeserver. Die ausführliche manuelle Einrichtung und Fehleranalyse steht in
+[docs/server-setup.md](docs/server-setup.md).
+
 ## Repository-Struktur
 
 ~~~text

@@ -13,6 +13,8 @@ enum DiagnosticAction {
   wake,
   sshTest,
   shutdown,
+  provisioning,
+  helperRemoval,
   configuration,
   discovery,
 }
@@ -221,6 +223,19 @@ class DiscoveredServer {
     serviceName: serviceName ?? other.serviceName,
     sources: <DiscoverySource>{...sources, ...other.sources},
   );
+}
+
+/// A Wake-on-LAN proposal read from a verified SSH connection. The Linux
+/// adapter name is presentation-only; a profile deliberately persists only
+/// the values needed to send the magic packet.
+class WakeOnLanCandidate {
+  const WakeOnLanCandidate({
+    required this.interfaceName,
+    required this.settings,
+  });
+
+  final String interfaceName;
+  final WakeOnLanSettings settings;
 }
 
 String validateHost(String value) {
