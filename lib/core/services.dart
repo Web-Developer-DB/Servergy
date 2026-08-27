@@ -853,12 +853,10 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     final client = await _connect(profile, credentials, onUnknownHostKey);
     try {
       _ensureProvisioningActive(isCancelled);
-      await _requireSudo(
-        client,
-        sudoPassword,
-        const ['/usr/bin/id', '-u'],
-        removal: true,
-      );
+      await _requireSudo(client, sudoPassword, const [
+        '/usr/bin/id',
+        '-u',
+      ], removal: true);
       _ensureProvisioningActive(isCancelled);
       await _requireSudo(client, sudoPassword, const [
         '/usr/bin/rm',
@@ -953,8 +951,7 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     String password,
     List<String> arguments, {
     bool removal = false,
-  }
-  ) async {
+  }) async {
     final result = await _runSudo(client, password, arguments);
     if (result.exitCode == 0) return result;
     throw removal

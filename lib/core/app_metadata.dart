@@ -6,6 +6,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// Product metadata comes from the installed application package so the UI
 /// never needs to maintain a second copy of the version declared in pubspec.
 class AppMetadata {
+  static const productName = 'Servergy';
+
   const AppMetadata({
     required this.name,
     required this.version,
@@ -20,11 +22,11 @@ class AppMetadata {
   final String releaseChannel;
   final String platform;
 
-  String get versionLabel => build.isEmpty || build == '–'
-      ? version
-      : '$version (Build $build)';
+  String get versionLabel =>
+      build.isEmpty || build == '–' ? version : '$version (Build $build)';
 
-  String get supportText => '$name\nVersion: $version\n'
+  String get supportText =>
+      '$name\nVersion: $version\n'
       'Build: $build\nKanal: $releaseChannel\nPlattform: $platform';
 
   factory AppMetadata.fromPackageInfo(PackageInfo info) {
@@ -34,7 +36,10 @@ class AppMetadata {
         : '${prerelease.split('.').first[0].toUpperCase()}'
               '${prerelease.split('.').first.substring(1)}';
     return AppMetadata(
-      name: info.appName.isEmpty ? 'Servergy' : info.appName,
+      // Linux reports the lower-case Dart package name in version.json. Keep
+      // support information aligned with the installed Android/Windows brand
+      // without maintaining any version information outside package metadata.
+      name: _productDisplayName(info.appName),
       version: info.version,
       build: info.buildNumber,
       releaseChannel: channel,
@@ -45,12 +50,19 @@ class AppMetadata {
   /// Widget tests do not register the platform plugin. The fallback avoids
   /// leaking a hard-coded release version into the product UI.
   factory AppMetadata.unavailable() => AppMetadata(
-    name: 'Servergy',
+    name: productName,
     version: 'Nicht verfügbar',
     build: '–',
     releaseChannel: 'Entwicklung',
     platform: Platform.operatingSystem,
   );
+
+  static String _productDisplayName(String packageName) {
+    final value = packageName.trim();
+    return value.isEmpty || value.toLowerCase() == productName.toLowerCase()
+        ? productName
+        : value;
+  }
 }
 
 final appMetadataProvider = FutureProvider<AppMetadata>((ref) async {

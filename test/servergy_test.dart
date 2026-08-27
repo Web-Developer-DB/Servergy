@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:servergy/core/app_metadata.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
 
@@ -192,5 +194,22 @@ void main() {
     expect(line, contains('auth_denied'));
     expect(line, isNot(contains('192.168')));
     expect(line, isNot(contains('password')));
+  });
+
+  test('derives the beta channel from installed package metadata', () {
+    final metadata = AppMetadata.fromPackageInfo(
+      PackageInfo(
+        appName: 'servergy',
+        packageName: 'dev.servergy.servergy',
+        version: '0.1.0-beta.1',
+        buildNumber: '3',
+      ),
+    );
+
+    expect(metadata.name, 'Servergy');
+    expect(metadata.releaseChannel, 'Beta');
+    expect(metadata.versionLabel, '0.1.0-beta.1 (Build 3)');
+    expect(metadata.supportText, contains('Plattform:'));
+    expect(metadata.supportText, isNot(contains('192.168.')));
   });
 }

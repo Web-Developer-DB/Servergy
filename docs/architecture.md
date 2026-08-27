@@ -1,6 +1,6 @@
 # Servergy-Architektur
 
-Dieses Dokument beschreibt die technische Struktur der Alpha. Ziel ist, dass
+Dieses Dokument beschreibt die technische Struktur der Beta. Ziel ist, dass
 auch neue Entwickler nachvollziehen können, welche Schicht für welche Aufgabe
 verantwortlich ist und wo Sicherheitsentscheidungen umgesetzt werden.
 

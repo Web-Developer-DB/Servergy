@@ -84,11 +84,13 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      await container.read(controllerProvider.notifier).removePoweroffHelper(
-        (_) async => null,
-        () async => 'temporary-sudo-secret',
-        (_) async => true,
-      );
+      await container
+          .read(controllerProvider.notifier)
+          .removePoweroffHelper(
+            (_) async => null,
+            () async => 'temporary-sudo-secret',
+            (_) async => true,
+          );
 
       expect(ssh.testCalls, 1);
       expect(ssh.removalCalls, 1);

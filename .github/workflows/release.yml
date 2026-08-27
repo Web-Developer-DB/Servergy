@@ -8,7 +8,28 @@ permissions:
   contents: write
 
 jobs:
+  validate-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        name: Validate beta tag and package version
+        shell: bash
+        run: |
+          package_version="$(sed -n 's/^version: //p' pubspec.yaml)"
+          release_version="${package_version%%+*}"
+          test -n "$package_version"
+          test "v$release_version" = "$GITHUB_REF_NAME"
+          case "$package_version" in
+            *-beta.*+*) ;;
+            *) echo "Expected a SemVer beta version, got $package_version" >&2; exit 1 ;;
+          esac
+          echo "value=$package_version" >> "$GITHUB_OUTPUT"
+
   android-linux:
+    needs: validate-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +55,8 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - run: dart run tool/generate_launcher_icons.dart
+      - run: git diff --exit-code -- android/app/src/main/res windows/runner/resources linux/packaging/icons assets/branding
       - run: flutter build apk --release
       - run: flutter build linux --release
       - run: |
@@ -47,6 +70,7 @@ jobs:
           path: dist
 
   windows:
+    needs: validate-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +84,10 @@ jobs:
           CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: if (!$env:CERTIFICATE -or !$env:CERTIFICATE_PASSWORD) { throw 'Windows signing secrets are required.' }
       - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: dart run tool/generate_launcher_icons.dart
+      - run: git diff --exit-code -- windows/runner/resources assets/branding
       - run: flutter build windows --release
       - name: Sign executable and package
         shell: pwsh
@@ -69,6 +97,7 @@ jobs:
         run: |
           [IO.File]::WriteAllBytes('servergy.pfx', [Convert]::FromBase64String($env:CERTIFICATE))
           signtool sign /fd SHA256 /f servergy.pfx /p $env:CERTIFICATE_PASSWORD build/windows/x64/runner/Release/servergy.exe
+          signtool verify /pa build/windows/x64/runner/Release/servergy.exe
           New-Item -ItemType Directory -Force dist
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/servergy-$env:GITHUB_REF_NAME-windows.zip
           Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $($_.Path | Split-Path -Leaf)" } | Set-Content dist/SHA256SUMS-windows.txt
@@ -88,4 +117,5 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          prerelease: true
           files: dist/*

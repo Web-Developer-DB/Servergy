@@ -9,9 +9,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import 'core/controller.dart';
 import 'core/app_metadata.dart';
+import 'core/controller.dart';
 import 'core/models.dart';
 
 class ServergyApp extends StatelessWidget {
@@ -251,94 +252,100 @@ class _StatusCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: color.withValues(alpha: .28)),
         ),
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: .16),
-                    borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: .16),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(icon, color: color),
                   ),
-                  child: Icon(icon, color: color),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          state.profile?.name ?? 'Homeserver einrichten',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: 'Status aktualisieren',
+                    onPressed: state.busy
+                        ? null
+                        : ref.read(controllerProvider.notifier).refresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(detail, style: TextStyle(color: scheme.onSurfaceVariant)),
+              const SizedBox(height: 14),
+              Text(
+                lastCheck == null
+                    ? 'Noch nicht geprüft'
+                    : 'Zuletzt geprüft: ${_formatMoment(lastCheck.at)}',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: scheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              if (state.profile != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 2),
+                    leading: const Icon(Icons.dns_outlined),
+                    title: const Text('Verbindungsdetails'),
+                    subtitle: const Text('Adresse und SSH-Port'),
                     children: [
-                      Text(
-                        state.profile?.name ?? 'Homeserver einrichten',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SelectableText(
+                          '${state.profile!.host}:${state.profile!.sshPort}',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
                         ),
                       ),
-                      Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
-                IconButton.filledTonal(
-                  tooltip: 'Status aktualisieren',
-                  onPressed: state.busy
-                      ? null
-                      : ref.read(controllerProvider.notifier).refresh,
-                  icon: const Icon(Icons.refresh_rounded),
+              if (state.busy) ...[
+                const SizedBox(height: 18),
+                const LinearProgressIndicator(
+                  borderRadius: BorderRadius.all(Radius.circular(99)),
+                ),
+                const SizedBox(height: 10),
+                TextButton.icon(
+                  onPressed: ref
+                      .read(controllerProvider.notifier)
+                      .cancelOperation,
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Aktion abbrechen'),
                 ),
               ],
-            ),
-            const SizedBox(height: 20),
-            Text(detail, style: TextStyle(color: scheme.onSurfaceVariant)),
-            const SizedBox(height: 14),
-            Text(
-              lastCheck == null
-                  ? 'Noch nicht geprüft'
-                  : 'Zuletzt geprüft: ${_formatMoment(lastCheck.at)}',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-            if (state.profile != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: const EdgeInsets.only(bottom: 2),
-                  leading: const Icon(Icons.dns_outlined),
-                  title: const Text('Verbindungsdetails'),
-                  subtitle: const Text('Adresse und SSH-Port'),
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: SelectableText(
-                        '${state.profile!.host}:${state.profile!.sshPort}',
-                        style: TextStyle(color: scheme.onSurfaceVariant),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (state.busy) ...[
-              const SizedBox(height: 18),
-              const LinearProgressIndicator(
-                borderRadius: BorderRadius.all(Radius.circular(99)),
-              ),
-              const SizedBox(height: 10),
-              TextButton.icon(
-                onPressed: ref
-                    .read(controllerProvider.notifier)
-                    .cancelOperation,
-                icon: const Icon(Icons.close_rounded),
-                label: const Text('Aktion abbrechen'),
-              ),
             ],
-          ],
+          ),
         ),
-      )),
+      ),
     );
   }
 }
@@ -470,9 +477,9 @@ class _SectionHeading extends StatelessWidget {
     children: [
       Text(
         title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
       const SizedBox(height: 4),
       Text(
@@ -485,7 +492,8 @@ class _SectionHeading extends StatelessWidget {
 
 DiagnosticEvent? _lastRelevantEvent(List<DiagnosticEvent> events) {
   final matching = events.where(
-    (event) => event.action == DiagnosticAction.refresh ||
+    (event) =>
+        event.action == DiagnosticAction.refresh ||
         event.action == DiagnosticAction.sshTest ||
         event.action == DiagnosticAction.load,
   );
@@ -494,7 +502,8 @@ DiagnosticEvent? _lastRelevantEvent(List<DiagnosticEvent> events) {
 
 String _formatMoment(DateTime time) {
   final now = DateTime.now();
-  final sameDay = now.year == time.year && now.month == time.month && now.day == time.day;
+  final sameDay =
+      now.year == time.year && now.month == time.month && now.day == time.day;
   final hour = time.hour.toString().padLeft(2, '0');
   final minute = time.minute.toString().padLeft(2, '0');
   return sameDay
@@ -588,11 +597,11 @@ Future<void> _offerServerPreparation(
     // Keeping it here avoids a background HomeScreen Snackbar competing with
     // the just-dismissed password dialog.
     final notice = controller.lastNotice;
-    final showManualSetup = _needsManualPoweroffSetup(
-      controller.lastErrorCode,
-    );
+    final showManualSetup = _needsManualPoweroffSetup(controller.lastErrorCode);
     if (notice != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(notice)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(notice)));
       controller.clearNotice();
     }
     if (showManualSetup && context.mounted) {
@@ -848,7 +857,9 @@ class SettingsScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.add_home_outlined),
                   title: const Text('Homeserver einrichten'),
-                  subtitle: const Text('Starte den sicheren Einrichtungsassistenten.'),
+                  subtitle: const Text(
+                    'Starte den sicheren Einrichtungsassistenten.',
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _open(context, const SetupScreen()),
                 ),
@@ -861,9 +872,12 @@ class SettingsScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.dns_outlined),
                   title: const Text('Serververbindung'),
-                  subtitle: Text('${profile.name} · ${profile.host}:${profile.sshPort}'),
+                  subtitle: Text(
+                    '${profile.name} · ${profile.host}:${profile.sshPort}',
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _open(context, const SetupScreen(initialStep: 1)),
+                  onTap: () =>
+                      _open(context, const SetupScreen(initialStep: 1)),
                 ),
               ],
             ),
@@ -880,13 +894,16 @@ class SettingsScreen extends ConsumerWidget {
                         : 'Noch nicht eingerichtet',
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _open(context, const SetupScreen(initialStep: 4)),
+                  onTap: () =>
+                      _open(context, const SetupScreen(initialStep: 4)),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.admin_panel_settings_outlined),
                   title: const Text('Sicheres Herunterfahren'),
-                  subtitle: const Text('Servergy-Helper auf dem Server verwalten'),
+                  subtitle: const Text(
+                    'Servergy-Helper auf dem Server verwalten',
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _open(
                     context,
@@ -903,9 +920,21 @@ class SettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.receipt_long_outlined),
                 title: const Text('Ereignisse'),
-                subtitle: const Text('Lokales, redigiertes Aktivitätsprotokoll'),
+                subtitle: const Text(
+                  'Lokales, redigiertes Aktivitätsprotokoll',
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _open(context, const EventsScreen()),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text('Beta-Feedback geben'),
+                subtitle: const Text(
+                  'Öffnet die Servergy-Issue-Vorlagen auf GitHub',
+                ),
+                trailing: const Icon(Icons.open_in_new_rounded),
+                onTap: () => _showFeedbackNotice(context),
               ),
             ],
           ),
@@ -923,12 +952,18 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   title: Text(
                     'Verbindung löschen',
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
-                  subtitle: const Text('Profil und lokale Zugangsdaten entfernen'),
+                  subtitle: const Text(
+                    'Profil und lokale Zugangsdaten entfernen',
+                  ),
                   enabled: !state.busy,
                   onTap: () async {
-                    if (!await _confirmConnectionDeletion(context) || !context.mounted) return;
+                    if (!await _confirmConnectionDeletion(context) ||
+                        !context.mounted)
+                      return;
                     await controller.deleteConnection();
                     if (context.mounted) Navigator.pop(context);
                   },
@@ -937,6 +972,48 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+final _feedbackUri = Uri.parse(
+  'https://github.com/Web-Developer-DB/Servergy/issues/new/choose',
+);
+
+Future<void> _showFeedbackNotice(BuildContext context) async {
+  final continueToGithub = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      icon: const Icon(Icons.privacy_tip_outlined),
+      title: const Text('Beta-Feedback sicher senden'),
+      content: const Text(
+        'GitHub wird in deinem Browser geöffnet. Reiche keine Passwörter, privaten Schlüssel, vollständigen IP-Adressen oder MAC-Adressen ein. Ein Diagnoseexport ist bereits redigiert und kann bei Bedarf bewusst angehängt werden.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialog, false),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(dialog, true),
+          icon: const Icon(Icons.open_in_new_rounded),
+          label: const Text('GitHub öffnen'),
+        ),
+      ],
+    ),
+  );
+  if (continueToGithub != true) return;
+  final opened = await launchUrl(
+    _feedbackUri,
+    mode: LaunchMode.externalApplication,
+  );
+  if (!opened && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'GitHub konnte nicht geöffnet werden. Prüfe deine Browser-Einstellungen.',
+        ),
       ),
     );
   }
@@ -954,7 +1031,8 @@ class _PoweroffSettingsScreen extends StatelessWidget {
       children: [
         const _StepInfo(
           icon: Icons.shield_outlined,
-          text: 'Der eingeschränkte Servergy-Helper erlaubt ausschließlich das sichere Herunterfahren. Das sudo-Passwort wird nie gespeichert.',
+          text:
+              'Der eingeschränkte Servergy-Helper erlaubt ausschließlich das sichere Herunterfahren. Das sudo-Passwort wird nie gespeichert.',
         ),
         const SizedBox(height: 24),
         FilledButton.icon(
@@ -990,9 +1068,9 @@ class _SettingsGroup extends StatelessWidget {
         padding: const EdgeInsets.only(left: 4, bottom: 8),
         child: Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
       ),
       Card(child: Column(children: children)),
@@ -1012,15 +1090,20 @@ class _AboutServergySection extends ConsumerWidget {
         ListTile(
           leading: const ServergyMark(),
           title: const Text('Servergy'),
-          subtitle: Text(metadata.when(
-            data: (value) => '${value.releaseChannel} · ${value.versionLabel}',
-            loading: () => 'Produktinformationen werden geladen',
-            error: (_, _) => 'Produktinformationen nicht verfügbar',
-          )),
+          subtitle: Text(
+            metadata.when(
+              data: (value) =>
+                  '${value.releaseChannel} · ${value.versionLabel}',
+              loading: () => 'Produktinformationen werden geladen',
+              error: (_, _) => 'Produktinformationen nicht verfügbar',
+            ),
+          ),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(18, 0, 18, 12),
-          child: Text('Wake-on-LAN und sichere SSH-Steuerung für deinen Homeserver.'),
+          child: Text(
+            'Wake-on-LAN und sichere SSH-Steuerung für deinen Homeserver.',
+          ),
         ),
         const Divider(height: 1),
         ListTile(
@@ -1029,7 +1112,10 @@ class _AboutServergySection extends ConsumerWidget {
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => _open(
             context,
-            const DocumentScreen(title: 'Datenschutz', asset: 'docs/privacy.md'),
+            const DocumentScreen(
+              title: 'Datenschutz',
+              asset: 'docs/privacy.md',
+            ),
           ),
         ),
         const Divider(height: 1),
@@ -1053,7 +1139,9 @@ class _AboutServergySection extends ConsumerWidget {
                 await Clipboard.setData(ClipboardData(text: value.supportText));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Versionsinformationen kopiert.')),
+                    const SnackBar(
+                      content: Text('Versionsinformationen kopiert.'),
+                    ),
                   );
                 }
               },
@@ -1096,7 +1184,9 @@ class DocumentScreen extends StatelessWidget {
             children: [
               Text(
                 snapshot.requireData,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(height: 1.5),
               ),
             ],
           ),
@@ -1187,7 +1277,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final existing = ref.read(controllerProvider).profile != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(existing ? 'Verbindung bearbeiten' : 'Homeserver einrichten'),
+        title: Text(
+          existing ? 'Verbindung bearbeiten' : 'Homeserver einrichten',
+        ),
       ),
       body: SafeArea(
         top: false,
@@ -1227,12 +1319,34 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         'Suche im Heimnetz oder trage deine Daten manuell ein.',
         Column(
           children: [
-            _field(_name, 'Anzeigename', Icons.badge_outlined, onChanged: _markConnectionUnverified),
-            _field(_sshPort, 'SSH-Port', Icons.settings_ethernet_rounded, number: true, onChanged: _markConnectionUnverified),
+            _field(
+              _name,
+              'Anzeigename',
+              Icons.badge_outlined,
+              onChanged: _markConnectionUnverified,
+            ),
+            _field(
+              _sshPort,
+              'SSH-Port',
+              Icons.settings_ethernet_rounded,
+              number: true,
+              onChanged: _markConnectionUnverified,
+            ),
             _discoveryCard(),
             const SizedBox(height: 12),
-            _field(_host, 'Hostname oder IP-Adresse', Icons.lan_outlined, containerKey: _hostFieldKey, onChanged: _markConnectionUnverified),
-            _field(_user, 'SSH-Benutzername', Icons.person_outline_rounded, onChanged: _markConnectionUnverified),
+            _field(
+              _host,
+              'Hostname oder IP-Adresse',
+              Icons.lan_outlined,
+              containerKey: _hostFieldKey,
+              onChanged: _markConnectionUnverified,
+            ),
+            _field(
+              _user,
+              'SSH-Benutzername',
+              Icons.person_outline_rounded,
+              onChanged: _markConnectionUnverified,
+            ),
           ],
         ),
       ),
@@ -1259,9 +1373,19 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 6),
-        Text(description, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          description,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 28),
         content,
       ],
@@ -1274,7 +1398,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+        border: Border(
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1289,7 +1415,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           ),
           const SizedBox(height: 4),
           TextButton(
-            onPressed: _step == 0 ? () => Navigator.pop(context) : () => _goToStep(_step - 1),
+            onPressed: _step == 0
+                ? () => Navigator.pop(context)
+                : () => _goToStep(_step - 1),
             child: Text(_step == 0 ? 'Abbrechen' : 'Zurück'),
           ),
         ],
@@ -1923,20 +2051,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         .saveWakeOnLanSettings(settings);
     if (saved && mounted) Navigator.pop(context);
   }
-
 }
 
 class _SetupProgress extends StatelessWidget {
   const _SetupProgress({required this.step});
   final int step;
 
-  static const _labels = [
-    'Netzwerk',
-    'Server',
-    'Zugang',
-    'Prüfung',
-    'Starten',
-  ];
+  static const _labels = ['Netzwerk', 'Server', 'Zugang', 'Prüfung', 'Starten'];
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1945,26 +2066,39 @@ class _SetupProgress extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Schritt ${step + 1} von ${_labels.length}', style: Theme.of(context).textTheme.labelLarge),
+        Text(
+          'Schritt ${step + 1} von ${_labels.length}',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
         const SizedBox(height: 8),
         Row(
-          children: List.generate(_labels.length, (index) => Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: index == _labels.length - 1 ? 0 : 5),
-              child: Container(
-                height: 5,
-                decoration: BoxDecoration(
-                  color: index <= step
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(99),
+          children: List.generate(
+            _labels.length,
+            (index) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: index == _labels.length - 1 ? 0 : 5,
+                ),
+                child: Container(
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: index <= step
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
               ),
             ),
-          )),
+          ),
         ),
         const SizedBox(height: 7),
-        Text(_labels[step], style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          _labels[step],
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     ),
   );
@@ -2041,16 +2175,21 @@ class EventsScreen extends ConsumerWidget {
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(20),
-                child: Text('Noch keine Ereignisse vorhanden. Aktionen und Prüfungen erscheinen hier automatisch.'),
+                child: Text(
+                  'Noch keine Ereignisse vorhanden. Aktionen und Prüfungen erscheinen hier automatisch.',
+                ),
               ),
             ),
           for (final entry in events.indexed) ...[
-            if (entry.$1 == 0 || !_isSameDay(events[entry.$1 - 1].at, entry.$2.at))
+            if (entry.$1 == 0 ||
+                !_isSameDay(events[entry.$1 - 1].at, entry.$2.at))
               Padding(
                 padding: const EdgeInsets.only(bottom: 8, top: 4),
                 child: Text(
                   _formatDay(entry.$2.at),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
             _EventRow(event: entry.$2),
@@ -2096,8 +2235,14 @@ class _EventSummary extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(color: color.withValues(alpha: .13), shape: BoxShape.circle),
-            child: Icon(success ? Icons.check_rounded : Icons.priority_high_rounded, color: color),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .13),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              success ? Icons.check_rounded : Icons.priority_high_rounded,
+              color: color,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -2110,7 +2255,9 @@ class _EventSummary extends StatelessWidget {
                       : success
                       ? 'Letzte Aktion erfolgreich'
                       : 'Letzte Aktion braucht Aufmerksamkeit',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -2139,9 +2286,16 @@ class _EventRow extends StatelessWidget {
         : Theme.of(context).colorScheme.error;
     return Card(
       child: ListTile(
-        leading: Icon(event.success ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded, color: color),
+        leading: Icon(
+          event.success
+              ? Icons.check_circle_outline_rounded
+              : Icons.error_outline_rounded,
+          color: color,
+        ),
         title: Text(_eventActionLabel(event.action)),
-        subtitle: Text('${event.success ? 'Erfolgreich' : 'Nicht erfolgreich'} · ${_formatMoment(event.at)}'),
+        subtitle: Text(
+          '${event.success ? 'Erfolgreich' : 'Nicht erfolgreich'} · ${_formatMoment(event.at)}',
+        ),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => _open(context, EventDetailScreen(event: event)),
       ),
@@ -2156,21 +2310,45 @@ class EventDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final success = event.success;
-    final color = success ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.error;
+    final color = success
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.error;
     return Scaffold(
       appBar: AppBar(title: const Text('Ereignisdetails')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Icon(success ? Icons.check_circle_rounded : Icons.error_rounded, color: color, size: 48),
+          Icon(
+            success ? Icons.check_circle_rounded : Icons.error_rounded,
+            color: color,
+            size: 48,
+          ),
           const SizedBox(height: 16),
-          Text(_eventActionLabel(event.action), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+          Text(
+            _eventActionLabel(event.action),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 6),
-          Text(success ? 'Die Aktion wurde erfolgreich abgeschlossen.' : 'Die Aktion konnte nicht abgeschlossen werden.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            success
+                ? 'Die Aktion wurde erfolgreich abgeschlossen.'
+                : 'Die Aktion konnte nicht abgeschlossen werden.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 28),
           _DetailRow(label: 'Zeitpunkt', value: _formatFullMoment(event.at)),
-          _DetailRow(label: 'Dauer', value: '${event.duration.inMilliseconds} ms'),
-          _DetailRow(label: 'Ergebnis', value: success ? 'Erfolgreich' : 'Nicht erfolgreich'),
+          _DetailRow(
+            label: 'Dauer',
+            value: '${event.duration.inMilliseconds} ms',
+          ),
+          _DetailRow(
+            label: 'Ergebnis',
+            value: success ? 'Erfolgreich' : 'Nicht erfolgreich',
+          ),
           _DetailRow(label: 'Technische Kennung', value: event.code),
         ],
       ),
@@ -2189,7 +2367,12 @@ class _DetailRow extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 3),
         SelectableText(value, style: Theme.of(context).textTheme.titleMedium),
       ],
@@ -2197,7 +2380,8 @@ class _DetailRow extends StatelessWidget {
   );
 }
 
-bool _isSameDay(DateTime? a, DateTime b) => a != null && a.year == b.year && a.month == b.month && a.day == b.day;
+bool _isSameDay(DateTime? a, DateTime b) =>
+    a != null && a.year == b.year && a.month == b.month && a.day == b.day;
 
 String _formatDay(DateTime date) {
   final now = DateTime.now();
@@ -2207,7 +2391,8 @@ String _formatDay(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
 }
 
-String _formatFullMoment(DateTime time) => '${_formatDay(time)}, ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
+String _formatFullMoment(DateTime time) =>
+    '${_formatDay(time)}, ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
 
 String _eventActionLabel(DiagnosticAction action) => switch (action) {
   DiagnosticAction.load => 'App-Status geladen',
@@ -2222,38 +2407,56 @@ String _eventActionLabel(DiagnosticAction action) => switch (action) {
 };
 
 class ServergyMark extends StatelessWidget {
-  const ServergyMark({super.key});
+  const ServergyMark({super.key, this.size = 34});
+  final double size;
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: 34,
-    height: 34,
-    decoration: BoxDecoration(
-      color: const Color(0xff071f2d),
-      borderRadius: BorderRadius.circular(9),
-    ),
-    child: const Stack(
-      alignment: Alignment.center,
-      children: [
-        Icon(Icons.storage_rounded, color: Color(0xfff8fafc), size: 20),
-        Positioned(
-          right: 0,
-          top: 0,
-          child: Icon(
-            Icons.keyboard_arrow_up,
-            color: Color(0xff00f26a),
-            size: 18,
-          ),
-        ),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: Icon(
-            Icons.keyboard_arrow_down,
-            color: Color(0xff08c5f5),
-            size: 18,
-          ),
-        ),
-      ],
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: const _ServergyMarkPainter()),
     ),
   );
+}
+
+/// The in-app mark mirrors the launcher asset without requiring an SVG
+/// renderer at runtime. It stays crisp at compact app-bar and settings sizes.
+class _ServergyMarkPainter extends CustomPainter {
+  const _ServergyMarkPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 34;
+    final background = Paint()..color = const Color(0xff092a3d);
+    final surface = Paint()..color = const Color(0xfff6f8fb);
+    final green = Paint()..color = const Color(0xff4ee29a);
+    final cyan = Paint()..color = const Color(0xff75d6f4);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(9 * scale)),
+      background,
+    );
+    for (final top in [7.5, 14.5, 21.5]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(7 * scale, top * scale, 20 * scale, 5 * scale),
+          Radius.circular(1.7 * scale),
+        ),
+        surface,
+      );
+      canvas.drawCircle(
+        Offset(22 * scale, (top + 2.5) * scale),
+        1 * scale,
+        green,
+      );
+      canvas.drawCircle(
+        Offset(24.5 * scale, (top + 2.5) * scale),
+        1 * scale,
+        cyan,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ServergyMarkPainter oldDelegate) => false;
 }

@@ -121,6 +121,18 @@ install(CODE "
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
+# Desktop launchers need a real hicolor icon after the beta bundle is installed
+# into a user's home directory. Keep those files alongside the bundle so the
+# installer can register them without requiring administrator rights.
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/packaging/icons/"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons" COMPONENT Runtime)
+install(FILES "${CMAKE_SOURCE_DIR}/packaging/dev.servergy.servergy.desktop.in"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications" COMPONENT Runtime)
+install(PROGRAMS
+  "${CMAKE_SOURCE_DIR}/packaging/install-linux.sh"
+  "${CMAKE_SOURCE_DIR}/packaging/uninstall-linux.sh"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
+
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"

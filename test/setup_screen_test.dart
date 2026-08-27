@@ -106,7 +106,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('setup uses one focused step with visible progress', (tester) async {
+  testWidgets('setup uses one focused step with visible progress', (
+    tester,
+  ) async {
     _setViewport(tester, const Size(400, 900));
     await tester.pumpWidget(_setup());
 
@@ -120,7 +122,9 @@ void main() {
     expect(find.text('Server finden'), findsOneWidget);
   });
 
-  testWidgets('existing connection opens the requested focused setup step', (tester) async {
+  testWidgets('existing connection opens the requested focused setup step', (
+    tester,
+  ) async {
     _setViewport(tester, const Size(400, 900));
     await tester.pumpWidget(_setup(profile: _profile, initialStep: 4));
     await tester.pumpAndSettle();
@@ -129,7 +133,9 @@ void main() {
     expect(find.text('Wake-on-LAN jetzt einrichten'), findsOneWidget);
   });
 
-  testWidgets('settings separate secure shutdown from connection editing', (tester) async {
+  testWidgets('settings separate secure shutdown from connection editing', (
+    tester,
+  ) async {
     _setViewport(tester, const Size(400, 1000));
     await tester.pumpWidget(_settings(profile: _profile));
     await tester.pumpAndSettle();
@@ -137,11 +143,19 @@ void main() {
     expect(find.text('Serververbindung'), findsOneWidget);
     await tester.tap(find.text('Sicheres Herunterfahren'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(FilledButton, 'Server vorbereiten'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Installierten Helper entfernen'), findsOneWidget);
+    expect(
+      find.widgetWithText(FilledButton, 'Server vorbereiten'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(OutlinedButton, 'Installierten Helper entfernen'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('deleting a saved connection requires confirmation in settings', (tester) async {
+  testWidgets('deleting a saved connection requires confirmation in settings', (
+    tester,
+  ) async {
     _setViewport(tester, const Size(400, 1000));
     await tester.pumpWidget(_settings(profile: _profile));
     await tester.pumpAndSettle();
@@ -158,7 +172,9 @@ void main() {
     expect(find.text('Verbindung löschen?'), findsNothing);
   });
 
-  testWidgets('dashboard exposes no destructive connection action', (tester) async {
+  testWidgets('dashboard exposes no destructive connection action', (
+    tester,
+  ) async {
     _setViewport(tester, const Size(400, 900));
     await tester.pumpWidget(_home(profile: _profile));
 
@@ -167,7 +183,9 @@ void main() {
     expect(find.byTooltip('Einstellungen'), findsOneWidget);
   });
 
-  testWidgets('events use a readable list and open technical details', (tester) async {
+  testWidgets('events use a readable list and open technical details', (
+    tester,
+  ) async {
     final event = DiagnosticEvent(
       at: DateTime.now(),
       action: DiagnosticAction.sshTest,
@@ -175,14 +193,16 @@ void main() {
       code: 'auth_denied',
       duration: const Duration(milliseconds: 250),
     );
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        controllerProvider.overrideWith(
-          () => _StateServerController(AppState(diagnostics: [event])),
-        ),
-      ],
-      child: const MaterialApp(home: EventsScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          controllerProvider.overrideWith(
+            () => _StateServerController(AppState(diagnostics: [event])),
+          ),
+        ],
+        child: const MaterialApp(home: EventsScreen()),
+      ),
+    );
 
     expect(find.text('Letzte Aktion braucht Aufmerksamkeit'), findsOneWidget);
     expect(find.text('SSH-Verbindung geprüft'), findsAtLeastNWidgets(1));
@@ -193,19 +213,43 @@ void main() {
     expect(find.text('auth_denied'), findsOneWidget);
   });
 
-  testWidgets('settings show package-backed version information', (tester) async {
+  testWidgets('settings show package-backed version information', (
+    tester,
+  ) async {
     const metadata = AppMetadata(
       name: 'Servergy',
-      version: '0.1.0-alpha.2',
-      build: '2',
-      releaseChannel: 'Alpha',
+      version: '0.1.0-beta.1',
+      build: '3',
+      releaseChannel: 'Beta',
       platform: 'android',
     );
     await tester.pumpWidget(_settings(metadata: metadata));
     await tester.pumpAndSettle();
 
-    expect(find.text('Alpha · 0.1.0-alpha.2 (Build 2)'), findsOneWidget);
+    expect(find.text('Beta · 0.1.0-beta.1 (Build 3)'), findsOneWidget);
     expect(find.text('Versionsinformationen kopieren'), findsOneWidget);
+  });
+
+  testWidgets('beta feedback warns before opening an external issue form', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(400, 1000));
+    await tester.pumpWidget(_settings(profile: _profile));
+    await tester.pumpAndSettle();
+
+    final feedback = find.text('Beta-Feedback geben');
+    await tester.scrollUntilVisible(feedback, 160);
+    await tester.tap(feedback);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Beta-Feedback sicher senden'), findsOneWidget);
+    expect(
+      find.textContaining('Passwörter, privaten Schlüssel'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Beta-Feedback sicher senden'), findsNothing);
   });
 
   test(
@@ -260,14 +304,15 @@ Widget _home({ServerProfile? profile}) => ProviderScope(
   child: const MaterialApp(home: HomeScreen()),
 );
 
-Widget _settings({ServerProfile? profile, AppMetadata? metadata}) => ProviderScope(
-  overrides: [
-    controllerProvider.overrideWith(() => _StaticServerController(profile)),
-    if (metadata != null)
-      appMetadataProvider.overrideWith((ref) async => metadata),
-  ],
-  child: const MaterialApp(home: SettingsScreen()),
-);
+Widget _settings({ServerProfile? profile, AppMetadata? metadata}) =>
+    ProviderScope(
+      overrides: [
+        controllerProvider.overrideWith(() => _StaticServerController(profile)),
+        if (metadata != null)
+          appMetadataProvider.overrideWith((ref) async => metadata),
+      ],
+      child: const MaterialApp(home: SettingsScreen()),
+    );
 
 void _setViewport(WidgetTester tester, Size size, {double textScale = 1}) {
   tester.view.physicalSize = size;
