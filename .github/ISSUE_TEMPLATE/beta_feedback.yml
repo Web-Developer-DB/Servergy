@@ -1,0 +1,34 @@
+name: Beta-Feedback geben
+description: Teile Bedienbarkeit, Stabilität oder Wünsche für Servergy Beta.
+title: "[Beta-Feedback]: "
+labels: ["beta-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für dein Feedback. Bitte keine Zugangsdaten, privaten Schlüssel,
+        vollständigen IP-Adressen oder MAC-Adressen teilen.
+  - type: input
+    id: version
+    attributes:
+      label: Servergy-Version
+      placeholder: 0.1.0-beta.1 (Build 3)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Plattform
+      options:
+        - Android
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Dein Feedback
+      description: Was hat gut funktioniert, was war unklar oder was fehlt?
+    validations:
+      required: true

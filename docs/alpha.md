@@ -1,13 +1,11 @@
-# Alpha-Status und Abnahme
+# Archiv: Alpha-Status
 
 ## Kennzeichnung
 
-Die aktuelle Version ist **Servergy Alpha 0.1.0-alpha.1**. Sie dient zur
-Entwicklung, zur Prüfung des Bedienablaufs und zu kontrollierten Tests im
-eigenen Heimnetz. Sie ist kein Versprechen, dass jede Router-, VPN- oder
-WOL-Kombination unterstützt wird.
+Dieser Stand dokumentiert die abgeschlossene Alpha-Phase. Der aktuelle
+Release-Prozess und die verbindliche Abnahme stehen in [beta.md](beta.md).
 
-## Bereits umgesetzt
+## Am Alpha-Abschluss bereits umgesetzt
 
 - V3-Profilformat mit Migration aus V1/V2
 - Secure Storage für Passwort, privaten Schlüssel und Host-Key-Vertrauen
@@ -20,7 +18,7 @@ WOL-Kombination unterstützt wird.
 - lokales Diagnoseprotokoll ohne sensible Endpunktdaten
 - fokussierter Einrichtungsassistent mit Fortschrittsanzeige für kleine Displays
 
-## Bekannte Alpha-Grenzen
+## Aus Alpha übernommene Grenzen
 
 - Nur ein Homeserver wird verwaltet.
 - Ein ausgeschalteter Server kann nicht durch den Netzwerksucher entdeckt werden.
@@ -31,10 +29,10 @@ WOL-Kombination unterstützt wird.
   von Servergy eingerichtet.
 - Der dokumentierte Shutdown-Helper setzt systemd auf dem Server voraus.
 - Android-Emulatoren ersetzen keinen echten WOL-LAN-Test im Heimnetz.
-- Release-Signierung, finale Icons, Store-Veröffentlichung und öffentliche
-  Distributionsfreigabe sind noch nicht Alpha-Abschlusskriterien.
+- Release-Signierung, finale Icons und öffentliche Distribution wurden in die
+  Beta-Freigabe überführt.
 
-## Abnahme-Matrix
+## Historische Alpha-Abnahme-Matrix
 
 | Bereich | Alpha-Kriterium | Ergebnis |
 | --- | --- | --- |
@@ -49,9 +47,9 @@ WOL-Kombination unterstützt wird.
 | Shutdown | Helper-Bestätigung und echtes Ausschalten | manuell offen |
 | VPN | SSH ohne WOL-Broadcast | manuell offen |
 
-## Alpha-Exit-Kriterien
+## Aus Alpha übernommene Abnahmeziele
 
-Die Version darf erst als stabile Release-Kandidatin bezeichnet werden, wenn:
+Diese Ziele werden in der verbindlichen Beta-Abnahme weitergeführt:
 
 1. Analyse und Unit-/Widgettests grün sind.
 2. Android auf einem echten API-31+-Gerät installiert und getestet wurde.

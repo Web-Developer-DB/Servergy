@@ -1,4 +1,4 @@
-# Servergy Alpha
+# Servergy Beta
 
 Servergy ist eine lokale Flutter-App für genau einen Homeserver. Sie kann
 einen laufenden Server über SSH prüfen, ihn kontrolliert herunterfahren und
@@ -6,12 +6,12 @@ ihn später über Wake-on-LAN wieder starten. Die App arbeitet ausschließlich i
 Vordergrund; es gibt keinen Hintergrunddienst, keine Cloud und keine
 Telemetrie.
 
-> **Status: Alpha** — Der aktuelle Stand ist für Entwicklung und reale
-> Funktionstests gedacht. Vor einer öffentlichen oder produktiven Verteilung
-> müssen die in [docs/alpha.md](docs/alpha.md) genannten manuellen Tests,
-> Signaturen und Release-Gates abgeschlossen werden.
+> **Status: Beta 0.1.0-beta.1** — Servergy ist für kontrollierte reale Tests
+> auf Android, Linux und Windows vorgesehen. Sie arbeitet ohne Cloud und
+> Telemetrie; vor jedem Beta-Release müssen die in [docs/beta.md](docs/beta.md)
+> dokumentierten Realtests, Signaturen und Release-Gates abgeschlossen werden.
 
-## Was die Alpha kann
+## Was die Beta kann
 
 - geführte Einrichtung für einen Homeserver auf Android, Linux und Windows
 - Suche nach möglichen SSH-Servern im aktuellen lokalen IPv4-Netz
@@ -195,23 +195,22 @@ android/                 Android-Manifest und lokale Netzwerk-MethodChannel
 docs/server-setup.md     Server- und sudoers-Einrichtung
 docs/architecture.md     Datenfluss, Sicherheits- und Komponentenmodell
 docs/development.md      Lokale Entwicklung, Tests und Debugging
-docs/alpha.md            Alpha-Status, bekannte Grenzen und Abnahme
+docs/beta.md             Beta-Status, Testprotokoll und Freigabe
 docs/privacy.md          Lokale Datenverarbeitung
 test/                    Unit- und Fachlogiktests
 ~~~
 
 ## Beiträge und Branches
 
-`Dev` ist der Integrationsbranch für die Alpha-Entwicklung. `main` bleibt der
-stabile Zielbranch für spätere Releases. Änderungen sollen klein, kommentiert
+`Dev` ist der Integrationsbranch für die Beta-Entwicklung. `main` bleibt der
+stabile Zielbranch für spätere stabile Releases. Änderungen sollen klein, kommentiert
 und mit `flutter analyze` sowie `flutter test` geprüft sein. Neue Netzwerk- oder
 SSH-Funktionen benötigen zusätzlich Fake-/Fehlerpfadtests und eine manuelle
 Abnahme auf mindestens einem echten Gerät.
 
 ## Lizenz und Verteilung
 
-Die Lizenz und die produktiven Distributionsbedingungen müssen vor dem ersten
-öffentlichen Release ergänzt beziehungsweise bestätigt werden. Für Alpha-
-Artefakte ist GitHub auf dem Entwicklungsbranch vorgesehen; signierte
-Android-, Linux- und Windows-Releases gehören erst zur späteren Release-
-Pipeline.
+Servergy steht unter der MIT-Lizenz. Beta-Artefakte werden als signierte
+GitHub-Pre-Releases veröffentlicht: Android als APK, Linux als Benutzer-Bundle
+mit Startmenü-Installer und Windows als signiertes ZIP. Jede Veröffentlichung
+enthält SHA-256-Prüfsummen und verweist auf die Beta-Feedback-Vorlagen.

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.servergy" "\0"
-            VALUE "FileDescription", "servergy" "\0"
+            VALUE "CompanyName", "Web-Developer-DB" "\0"
+            VALUE "FileDescription", "Servergy" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "servergy" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dev.servergy. All rights reserved." "\0"
+            VALUE "InternalName", "Servergy" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Web-Developer-DB" "\0"
             VALUE "OriginalFilename", "servergy.exe" "\0"
-            VALUE "ProductName", "servergy" "\0"
+            VALUE "ProductName", "Servergy" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

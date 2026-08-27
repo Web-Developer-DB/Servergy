@@ -829,7 +829,8 @@ class ServerController extends Notifier<AppState> {
         watch.elapsed,
       );
     } on ServergyError catch (error) {
-      if (_active(token)) _fail(error, DiagnosticAction.helperRemoval, watch.elapsed);
+      if (_active(token))
+        _fail(error, DiagnosticAction.helperRemoval, watch.elapsed);
     } on SSHAuthFailError {
       if (_active(token)) {
         _fail(
@@ -1087,7 +1088,10 @@ class ServerController extends Notifier<AppState> {
       duration: duration,
     );
     await _store.addDiagnostic(event);
-    if (ref.mounted)
-      state = state.copyWith(diagnostics: await _store.diagnostics());
+    // The storage read is asynchronous as well. Check mount status only after
+    // it completes so a late diagnostics write can never update a disposed
+    // controller (for example when a setup route is closed after an error).
+    final diagnostics = await _store.diagnostics();
+    if (ref.mounted) state = state.copyWith(diagnostics: diagnostics);
   }
 }

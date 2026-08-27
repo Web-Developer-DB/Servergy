@@ -5,7 +5,20 @@ on:
   push:
     branches: [Dev]
 
+permissions:
+  contents: read
+
 jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -14,11 +27,26 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze
       - run: flutter test
+      - run: dart run tool/generate_launcher_icons.dart
+      - run: git diff --exit-code -- android/app/src/main/res windows/runner/resources linux/packaging/icons assets/branding
       - run: flutter build apk --debug
       - run: flutter build linux --debug
+      - name: Verify the user-local Linux installer
+        shell: bash
+        run: |
+          install_root="$(mktemp -d)"
+          install_data="$install_root/.local/share"
+          HOME="$install_root" XDG_DATA_HOME="$install_data" build/linux/x64/debug/bundle/install-linux.sh
+          test -x "$install_data/servergy/servergy"
+          test -x "$install_data/servergy/uninstall-linux.sh"
+          test -f "$install_data/applications/dev.servergy.servergy.desktop"
+          test -f "$install_data/icons/hicolor/512x512/apps/dev.servergy.servergy.png"
+          HOME="$install_root" XDG_DATA_HOME="$install_data" "$install_data/servergy/uninstall-linux.sh"
+          test ! -e "$install_data/servergy"
+          test ! -e "$install_data/applications/dev.servergy.servergy.desktop"
 
   windows-build:
     runs-on: windows-latest
@@ -28,4 +56,6 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - run: dart run tool/generate_launcher_icons.dart
+      - run: git diff --exit-code -- windows/runner/resources assets/branding
       - run: flutter build windows --debug

@@ -1,0 +1,54 @@
+name: Beta-Fehler melden
+description: Hilf uns, einen Fehler in Servergy reproduzierbar zu beheben.
+title: "[Beta]: "
+labels: ["beta-feedback", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für deinen Beta-Test. Bitte **niemals** Passwörter, private Schlüssel,
+        vollständige IP-Adressen, MAC-Adressen oder Screenshots mit solchen Daten einreichen.
+  - type: input
+    id: version
+    attributes:
+      label: Servergy-Version
+      description: Unter Einstellungen → Über Servergy.
+      placeholder: 0.1.0-beta.1 (Build 3)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Plattform
+      options:
+        - Android 12–16
+        - Android 17 / API 37
+        - Ubuntu 24.04 LTS
+        - Windows 11
+        - Andere
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte zum Reproduzieren
+      placeholder: 1. …\n2. …\n3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Erwartetes Verhalten
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Tatsächliches Verhalten
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redigierter Diagnoseexport (optional)
+      description: Nur bewusst über Ereignisse exportieren und vor dem Senden kontrollieren.

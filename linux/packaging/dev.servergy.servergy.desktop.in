@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Servergy
+Comment=Wake-on-LAN und sichere SSH-Steuerung für deinen Homeserver
+Exec=@APP_DIR@/servergy
+Icon=dev.servergy.servergy
+Terminal=false
+Categories=Utility;System;
+StartupWMClass=dev.servergy.servergy
+StartupNotify=true

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.1.0-alpha.2+2
+version: 0.1.0-beta.1+3
 
 environment:
   sdk: ^3.12.1
@@ -34,8 +34,9 @@ dependencies:
   dartssh2: ^3.3.1
   flutter_secure_storage: ^11.0.0
   shared_preferences: ^2.5.4
-  file_picker: ^12.1.0
+  file_picker: ^12.1.1
   package_info_plus: ^10.2.1
+  url_launcher: ^6.3.2
   # Reads the active local IPv4 network on Android, Linux, and Windows.
   network_info_plus: ^8.2.1
   # Queries only locally advertised services such as _ssh._tcp.local.
@@ -59,6 +60,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
+  # Deterministically generates all launcher-icon rasters from the committed
+  # Servergy vector mark. It is not bundled with the application.
+  image: ^4.9.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

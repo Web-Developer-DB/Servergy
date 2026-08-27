@@ -38,9 +38,11 @@ die App geöffnet bleiben, während WOL- und Shutdown-Polling laufen.
 ## Qualitätsgates vor jedem Commit
 
 ~~~bash
-dart format lib test
+dart format lib test tool
 flutter analyze
 flutter test
+dart run tool/generate_launcher_icons.dart
+git diff --exit-code -- android/app/src/main/res windows/runner/resources linux/packaging/icons assets/branding
 flutter build linux --debug
 ~~~
 
@@ -56,6 +58,13 @@ Der vollständige Android-Build kann wegen Gradle-/SDK-Caches länger dauern.
 Ein erfolgreicher Kotlin-Task beweist die native Berechtigungsbrücke, ersetzt
 aber nicht die Installation des APK auf einem echten Gerät.
 
+Die Launcher-Grafik stammt aus `assets/branding/servergy-mark.svg`. Das
+Generator-Skript erzeugt daraus die Android- und Linux-Raster sowie das
+Windows-ICO; Binärdateien werden nicht manuell bearbeitet. Ein Linux-Bundle
+wird für den angemeldeten Benutzer mit `./install-linux.sh` installiert. Das
+Skript legt `uninstall-linux.sh` im Installationsordner ab und verändert weder
+Systemverzeichnisse noch Serverkonfigurationen.
+
 ## Realgerät-Test
 
 Für einen reproduzierbaren End-to-End-Test werden benötigt:
@@ -66,6 +75,10 @@ Für einen reproduzierbaren End-to-End-Test werden benötigt:
 - ein im BIOS/UEFI und Betriebssystem aktiviertes WOL,
 - idealerweise eine kabelgebundene Netzwerkkarte,
 - ein Telefon im selben LAN oder ein korrekt eingerichtetes VPN.
+
+Die verbindliche Beta-Abnahme inklusive Android-, Linux- und Windows-Protokoll
+steht in [beta.md](beta.md). Jeder Beta-Tag setzt deren vollständige Abnahme
+voraus.
 
 Testreihenfolge:
 
