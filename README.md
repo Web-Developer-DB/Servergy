@@ -1,216 +1,255 @@
-# Servergy Beta
+<p align="center">
+  <img src="assets/branding/servergy-icon.png" width="128" alt="Servergy – Homeserver-Steuerung" />
+</p>
 
-Servergy ist eine lokale Flutter-App für genau einen Homeserver. Sie kann
-einen laufenden Server über SSH prüfen, ihn kontrolliert herunterfahren und
-ihn später über Wake-on-LAN wieder starten. Die App arbeitet ausschließlich im
-Vordergrund; es gibt keinen Hintergrunddienst, keine Cloud und keine
-Telemetrie.
+<h1 align="center">Servergy</h1>
 
-> **Status: Beta 0.1.0-beta.1** — Servergy ist für kontrollierte reale Tests
-> auf Android, Linux und Windows vorgesehen. Sie arbeitet ohne Cloud und
-> Telemetrie; vor jedem Beta-Release müssen die in [docs/beta.md](docs/beta.md)
-> dokumentierten Realtests, Signaturen und Release-Gates abgeschlossen werden.
+<p align="center">
+  <strong>Dein Homeserver. Sicher erreichbar. Einfach steuerbar.</strong><br />
+  Eine lokale Flutter-App für Wake-on-LAN und kontrollierte SSH-Steuerung.
+</p>
 
-## Was die Beta kann
+<p align="center">
+  <a href="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml">
+    <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=Dev" alt="Qualitätsprüfung" />
+  </a>
+  <a href="docs/beta.md">
+    <img src="https://img.shields.io/badge/Status-Beta-F59E0B?style=flat-square" alt="Status: Beta" />
+  </a>
+  <a href="https://github.com/Web-Developer-DB/Servergy/releases">
+    <img src="https://img.shields.io/badge/Version-0.1.0--beta.1-0F4C81?style=flat-square" alt="Version 0.1.0-beta.1" />
+  </a>
+  <a href="docs/privacy.md">
+    <img src="https://img.shields.io/badge/Datenschutz-lokal%20%26%20ohne%20Telemetrie-0B7A43?style=flat-square" alt="Lokale Datenverarbeitung ohne Telemetrie" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/Lizenz-MIT-5B21B6?style=flat-square" alt="MIT-Lizenz" />
+  </a>
+</p>
 
-- geführte Einrichtung für einen Homeserver auf Android, Linux und Windows
-- Suche nach möglichen SSH-Servern im aktuellen lokalen IPv4-Netz
-- optionale mDNS-Suche nach `_ssh._tcp.local` und begrenzter SSH-Port-Scan
-- manuelle Eingabe von Hostname, IP-Adresse, SSH-Port und Benutzername
-- SSH-Schlüssel-Anmeldung mit OpenSSH-, RSA- und EC-Privatschlüsseln
-- Passwort-Anmeldung mit sicherer Speicherung im Betriebssystem-Schlüsselspeicher
-- Passphrase-Abfrage für verschlüsselte Schlüssel, ohne die Passphrase zu speichern
-- SSH-Host-Key-Fingerprint mit manueller Erstbestätigung und Änderungsblockade
-- Wake-on-LAN mit drei Magic Packets und anschließendem Erreichbarkeits-Polling
-- kontrolliertes Ausschalten über einen festen, restriktiven sudoers-Helper
-- abbrechbare Start-, Such- und Ausschaltvorgänge
-- lokales, begrenztes und redigiertes Diagnoseprotokoll
-- helle und dunkle Material-3-Oberfläche mit responsivem Onboarding
+<p align="center">
+  <a href="#-auf-einen-blick">Überblick</a> ·
+  <a href="#-erste-schritte">Erste Schritte</a> ·
+  <a href="#-sicherheit-als-standard">Sicherheit</a> ·
+  <a href="#-beta-und-qualität">Beta</a> ·
+  <a href="#-dokumentation">Dokumentation</a>
+</p>
 
-## Bewusste Grenzen
+> [!IMPORTANT]
+> **Servergy befindet sich in der Beta-Phase.** Die App ist für kontrollierte
+> Tests mit einem eigenen Homeserver gedacht. Vor einem öffentlichen Beta-Tag
+> müssen die Realtests, Signaturen und Freigabekriterien in
+> [docs/beta.md](docs/beta.md) erfüllt sein.
 
-Servergy verwaltet in Version 1 genau einen Server. Der Server muss für die
-Einrichtung eingeschaltet und per SSH erreichbar sein. Der Netzwerksucher
-findet nur mögliche SSH-Ziele im aktuellen lokalen LAN; er kann keinen
-ausgeschalteten Server und keine MAC-Adresse zuverlässig entdecken. Ein Ziel
-über VPN wird manuell eingetragen, weil lokale IPv4-Suche und Broadcasts über
-VPN nicht allgemein funktionieren.
+## ✨ Auf einen Blick
 
-Wake-on-LAN muss auf Mainboard, Serverbetriebssystem, Netzwerkkarte und
-gegebenenfalls Router aktiviert sein. Die zuverlässigste Variante ist ein
-kabelgebundener Serveradapter. Die vollständige Servereinrichtung steht in
+|  | Servergy bedeutet |
+| --- | --- |
+| 🏠 **Ein klarer Fokus** | Eine lokale App für **genau einen** Homeserver – ohne Cloud-Konto und ohne komplizierte Serververwaltung. |
+| 🔐 **Sicher steuern** | SSH-Zugang, Host-Key-Prüfung und ein enger, fest definierter Shutdown-Helper statt frei formulierbarer Shell-Befehle. |
+| ⚡ **Wieder starten** | Wake-on-LAN mit Statusprüfung, sobald dein Server ausgeschaltet ist. |
+| 🧭 **Geführt einrichten** | Ein fokussierter Assistent führt durch Netzwerk, Server, SSH, Verbindungsprüfung und optionales Wake-on-LAN. |
+| 🕶️ **Privat bleiben** | Keine Cloud, keine Telemetrie, kein Tracking und kein Hintergrunddienst. Alle Daten bleiben auf deinem Gerät. |
+
+Servergy steuert ausschließlich Aktionen, die du bewusst auslöst. Die App läuft
+im Vordergrund und verbindet sich nur mit dem Homeserver, den du einrichtest.
+
+## 🧩 Funktionen
+
+| Bereich | Was Servergy erledigt | Dein Vorteil |
+| --- | --- | --- |
+| 🔎 **Server finden** | Sucht optionale mDNS-Ankündigungen und prüft kurz mögliche SSH-Ziele im lokalen IPv4-Netz; Host oder IP können immer manuell eingetragen werden. | Schneller Einstieg im Heimnetz, volle Kontrolle bei VPN oder festen Adressen. |
+| 🔑 **SSH-Zugang** | Unterstützt Passwort-Anmeldung sowie OpenSSH-, RSA- und EC-Schlüssel; verschlüsselte Schlüssel fragen ihre Passphrase nur für die aktuelle Aktion ab. | Zugangsdaten werden nicht unnötig erneut eingegeben oder angezeigt. |
+| 🪪 **Host-Key-Schutz** | Der SHA-256-Fingerprint wird beim ersten Kontakt bewusst bestätigt. Ein geänderter Key blockiert weitere Aktionen. | Schutz vor einem versehentlich oder böswillig ausgetauschten Ziel. |
+| ⚡ **Wake-on-LAN** | Sendet Wake-on-LAN und prüft anschließend, ob der SSH-Port wieder erreichbar wird. | Ein ausgeschalteter Server kann bequem gestartet werden. |
+| ⏻ **Sicher herunterfahren** | Nutzt einen eingeschränkten, root-eigenen Servergy-Helper mit einer festen systemd-Unit. | Kein allgemeines `sudo`, keine frei wählbaren Fernbefehle. |
+| 🧾 **Ereignisse** | Hält ein lokales, begrenztes und redigiertes Aktivitätsprotokoll bereit. | Hilfreiche Diagnose ohne Profil- oder Netzwerkdaten im Export. |
+| 🎨 **Plattformgerecht** | Helle und dunkle Material-3-Oberfläche, große Interaktionsflächen sowie native Launcher- und Startmenü-Icons. | Eine ruhige, verständliche Bedienung auf Android, Linux und Windows. |
+
+## 🗺️ So funktioniert der Ablauf
+
+| Schritt | In der App | Sicherheitsentscheidung |
+| :---: | --- | --- |
+| `1` | 🌐 **Netzwerkgrenze verstehen** | Servergy erklärt, wann Heimnetz oder VPN sinnvoll ist. |
+| `2` | 🔎 **Server finden oder eintragen** | Ein Fund ist nur ein Kandidat – noch kein vertrauenswürdiger Server. |
+| `3` | 🔑 **SSH-Zugang wählen** | Schlüssel werden bevorzugt unterstützt; Passwörter bleiben im System-Schlüsselspeicher. |
+| `4` | 🪪 **Verbindung und Host-Key prüfen** | Erst nach erfolgreichem SSH-Test werden neue Zugangsdaten gespeichert. |
+| `5` | ⚡ **Wake-on-LAN ergänzen** | MAC- und Broadcast-Daten können geprüft, gespeichert oder später ergänzt werden. |
+
+Danach wird die Startseite zum Dashboard: Erreichbarkeit, letzter Check und die
+passende nächste Aktion stehen im Vordergrund; technische Details bleiben in
+den Ereignissen und Einstellungen erreichbar.
+
+## 🚀 Erste Schritte
+
+### Für Beta-Tester
+
+Beta-Artefakte erscheinen als signierte GitHub-Pre-Releases mit
+SHA-256-Prüfsummen. Prüfe immer die Release-Notizen und die Prüfsumme, bevor du
+ein Artefakt installierst.
+
+| Plattform | Beta-Artefakt | Start |
+| --- | --- | --- |
+| 🤖 **Android 12+** | Signiertes APK | APK aus dem GitHub-Release installieren und die lokale Netzwerkfreigabe bei Bedarf bewusst erlauben. |
+| 🐧 **Linux** | Nutzer-Bundle (`.tar.gz`) | Archiv entpacken, `./install-linux.sh` ausführen und Servergy anschließend über das Anwendungsmenü starten. Die Installation bleibt unter `~/.local/share/servergy`. |
+| 🪟 **Windows 11** | Signiertes ZIP | ZIP entpacken, Windows-Signatur prüfen und `servergy.exe` starten. |
+
+> [!NOTE]
+> Ein echter Wake-on-LAN-Test benötigt ein passendes Heimnetz. Android-Emulatoren
+> und VPN-Verbindungen ersetzen keinen Broadcast-Test im lokalen Netzwerk.
+
+### Für deinen Homeserver
+
+1. Aktiviere Wake-on-LAN im BIOS/UEFI, Betriebssystem und – falls nötig – im
+   Netzwerk.
+2. Richte einen eigenen SSH-Benutzer ein und verwende nach Möglichkeit einen
+   privaten Schlüssel.
+3. Vergleiche den Host-Key-Fingerprint direkt am Server, bevor du ihn in der
+   App bestätigst.
+4. Richte den eingeschränkten Shutdown-Helper über **Einstellungen → Sicheres
+   Herunterfahren → Server vorbereiten** oder anhand der Anleitung ein.
+
+Die vollständige, sichere Einrichtung für Debian/Ubuntu mit systemd steht in
 [docs/server-setup.md](docs/server-setup.md).
 
-## Schnellstart für Entwickler
+<details>
+<summary><strong>Entwicklung lokal starten</strong></summary>
 
-Voraussetzungen:
+<br />
 
-- Flutter/Dart passend zur SDK-Angabe in `pubspec.yaml`
+**Voraussetzungen**
+
+- Flutter/Dart passend zu `pubspec.yaml`
 - Android Studio/JDK für Android-Builds
-- Linux: `libsecret-1-dev` und `libsecret-1-0` für `flutter_secure_storage`
+- unter Linux: `libsecret-1-dev` und `libsecret-1-0`
 - ein Android-Gerät/Emulator, Linux-Desktop oder Windows-Entwicklungsrechner
 
-Im Repository ausführen:
-
-~~~bash
+```bash
 flutter pub get
 flutter analyze
 flutter test
 flutter run
-~~~
+```
 
-Plattform-Builds:
+**Plattform-Builds**
 
-~~~bash
+```bash
 flutter build apk --debug
 flutter build linux --debug
 flutter build windows --debug
-~~~
+```
 
-Eine ausführliche Entwicklungsroutine mit Emulator- und Realgerät-Tests steht
+Die vollständige Entwicklungs-, Emulator- und Realgeräte-Anleitung findest du
 in [docs/development.md](docs/development.md).
 
-## Bedienablauf
+</details>
 
-1. **Netzwerkgrenze:** Der Server ist eingeschaltet; Heimnetz und VPN-Hinweis
-   werden erklärt.
-2. **Server finden:** Die Suche prüft nur den erkannten lokalen Bereich. Ein
-   Treffer wird erst nach einem SSH-Test und Host-Key-Vergleich vertrauenswürdig.
-3. **SSH-Zugang:** Entweder importierter Schlüssel oder Passwort-Modus.
-4. **Verbindung prüfen:** Der SSH-Test läuft vor dem Speichern neuer Zugangsdaten.
-5. **Server später starten:** Wake-on-LAN kann jetzt konfiguriert oder später in
-   den Einstellungen ergänzt werden.
+## 🛡️ Sicherheit als Standard
 
-Im Passwort-Modus wird ein nicht leeres SSH-Passwort nach erfolgreicher Prüfung
-verschlüsselt gespeichert. In den Einstellungen wird es nie angezeigt; ein
-leeres Feld bedeutet bei einem vorhandenen Profil „bestehendes Passwort
-beibehalten“. Beim Wechsel auf Schlüssel-Anmeldung wird das Passwort gelöscht.
+Servergy soll nicht nur bequem sein, sondern den Zugriff auf einen Homeserver
+bewusst klein halten.
 
-## Sicherheitsmodell
-
-Nicht geheime Profildaten liegen in `shared_preferences`. Passwörter,
-Privatschlüssel und Host-Key-Vertrauen liegen ausschließlich in
-`flutter_secure_storage`. Passphrasen werden nur für die laufende Verbindung
-verwendet. Der SSH-Fingerprint wird pro Host und Port gebunden; ein anderer
-Fingerprint blockiert die Verbindung.
-
-Der Shutdown ist kein frei formulierbarer Shell-Befehl. Die App ruft konstant
-`sudo -n /usr/local/sbin/servergy-poweroff` auf. Der root-eigene Helper startet
-eine feste systemd-Unit, bestätigt den angenommenen Auftrag und löst danach den
-Poweroff aus. Die erlaubte sudoers-Regel und die Unit stehen in der
-Serveranleitung.
-
-Diagnoseexporte enthalten nur Zeitpunkt, Aktion, Ergebnis, Fehlercode und
-Dauer. Es werden keine Passwörter, Schlüssel, Benutzernamen, vollständigen
-Hostadressen oder MAC-Adressen exportiert. Siehe
-[docs/privacy.md](docs/privacy.md).
-
-## Servergy-Ausschalt-Helfer auf dem Homeserver
-
-Nach einer erfolgreichen SSH-Einrichtung kann die App unter
-**Einstellungen → Sicheres Herunterfahren → Server vorbereiten** den sicheren
-Ausschalt-Helfer einmalig auf einem Debian-System mit systemd einrichten. Die
-Aktion ist immer bestätigt und verlangt ein **temporäres sudo-Passwort** des
-konfigurierten SSH-Benutzers. Dieses Passwort wird nur über die laufende
-SSH-Verbindung an `sudo` übergeben; es wird nicht in der App gespeichert,
-protokolliert oder erneut angezeigt.
-
-Der Assistent installiert ausschließlich diese drei Dateien:
-
-| Datei | Eigentümer und Rechte | Zweck |
-| --- | --- | --- |
-| `/usr/local/sbin/servergy-poweroff` | `root:root`, `0755` | Argumentloser Helper. Er startet nur die unten genannte Unit und antwortet der App mit `servergy-poweroff-accepted`. |
-| `/etc/systemd/system/servergy-poweroff.service` | `root:root`, `0644` | systemd-Oneshot-Unit. Sie wartet zwei Sekunden, damit die SSH-Antwort ankommt, und führt danach `systemctl poweroff --no-block` aus. |
-| `/etc/sudoers.d/servergy` | `root:root`, `0440` | Erlaubt ausschließlich dem in Servergy eingetragenen SSH-Benutzer ohne Passwort den einen Helper-Aufruf. Sie erlaubt weder eine Shell noch `shutdown`, `systemctl` oder andere sudo-Befehle. |
-
-Der Assistent prüft vor der Installation den SSH-Fingerprint, den festen
-Payload per SHA-256, die sudoers-Syntax sowie die Rechte der installierten
-Helper- und Unit-Datei. Er startet den Helper nicht während der Installation;
-der Server bleibt eingeschaltet. Der erste über die App bestätigte Shutdown ist
-der eigentliche Funktionsnachweis.
-
-### Wo Entwickler die installierten Skripte im Projekt finden
-
-Die Vorlagen liegen absichtlich als versionierte, unveränderliche Dart-Strings
-im Quellcode und nicht als vom Nutzer auswählbare Dateien:
-
-| Serverdatei | Quellstelle im Projekt |
+| Schutzmaßnahme | Umsetzung in Servergy |
 | --- | --- |
-| `/usr/local/sbin/servergy-poweroff` | `lib/core/services.dart` → `ServergyProvisioningPayload.helper` |
-| `/etc/systemd/system/servergy-poweroff.service` | `lib/core/services.dart` → `ServergyProvisioningPayload.service` |
-| `/etc/sudoers.d/servergy` | `lib/core/services.dart` → `ServergyProvisioningPayload.sudoersFor(...)` |
+| **Keine Cloud** | Servergy überträgt keine Profil-, Diagnose- oder Nutzungsdaten an einen Backend-Dienst. |
+| **Getrennte Datenspeicher** | Nicht geheime Profildaten liegen lokal in App-Einstellungen; Passwörter, private Schlüssel und bestätigte Host-Keys liegen im Betriebssystem-Schlüsselspeicher. |
+| **Kein Passwort-Fallback** | Beim Wechsel auf Schlüssel-Anmeldung wird ein gespeichertes Passwort entfernt. Ein leeres Passwortfeld bedeutet bewusst „beibehalten“. |
+| **Fingerprints statt Vertrauen auf Namen** | Das Vertrauen gilt für Host und Port. Eine Schlüsseländerung muss außerhalb der App geprüft werden. |
+| **Kein Remote-Terminal** | Die App bietet keine Eingabe für frei gewählte Remote-Kommandos. |
+| **Enger Shutdown-Pfad** | Die App ruft ausschließlich `sudo -n /usr/local/sbin/servergy-poweroff` auf. Der Helper startet nur die fest definierte systemd-Unit. |
+| **Redigierte Diagnose** | Der Export enthält Zeitpunkt, Aktion, Ergebnis, Fehlercode und Dauer – keine Passwörter, Schlüssel, Benutzernamen, vollständigen Hostadressen oder MAC-Adressen. |
 
-`SshService.provisionPoweroffHelper(...)` in derselben Datei steuert Upload,
-temporäres Staging, sudo-Aufrufe, Rechteprüfung und Bereinigung. Die
-Benutzerführung liegt in `lib/servergy_app.dart`; der koordinierende Ablauf mit
-SSH- und Host-Key-Prüfung in `lib/core/controller.dart`.
+### Der Shutdown-Helper im Überblick
 
-**Wichtig bei Änderungen:** Helper und Unit haben in
-`ServergyProvisioningPayload` feste SHA-256-Werte. Werden deren Inhalte
-verändert, müssen die passenden Hash-Konstanten mitgeändert werden; andernfalls
-bricht die App die Installation absichtlich vor dem Upload ab. Änderungen an
-der sudoers-Vorlage müssen weiterhin auf genau den argumentlosen Helper
-beschränkt bleiben. Danach mindestens `flutter analyze`, `flutter test` und
-einen realen Debian-Test für Installation, Shutdown und Entfernung ausführen.
+Beim optionalen Server-Setup werden ausschließlich diese Dateien verwaltet:
 
-### Helper wieder entfernen
+| Serverdatei | Eigentümer & Rechte | Zweck |
+| --- | --- | --- |
+| `/usr/local/sbin/servergy-poweroff` | `root:root` · `0755` | Argumentloser Helper; bestätigt den Auftrag und startet nur die Servergy-systemd-Unit. |
+| `/etc/systemd/system/servergy-poweroff.service` | `root:root` · `0644` | Oneshot-Unit, die den Server erst nach erfolgreicher SSH-Antwort herunterfährt. |
+| `/etc/sudoers.d/servergy` | `root:root` · `0440` | Erlaubt dem konfigurierten SSH-Benutzer ausschließlich diesen einen Helper-Aufruf. |
 
-In der App steht dafür unter **Einstellungen → Sicheres Herunterfahren →
-Installierten Helper entfernen** eine bestätigte Aktion bereit. Sie prüft den
-SSH-Fingerprint erneut, fordert ein einmaliges sudo-Passwort an und entfernt
-genau die unten genannten Dateien. SSH, Wake-on-LAN und das lokale
-Verbindungsprofil bleiben erhalten. Der SSH-Benutzer benötigt für die
-Entfernung normale sudo-Administratorrechte; die absichtlich enge
-Servergy-sudoers-Regel erlaubt nur das Herunterfahren und reicht dafür nicht.
+Die konkreten Schritte, Rechteprüfungen, der manuelle Fallback und die sichere
+Entfernung stehen in der [Serveranleitung](docs/server-setup.md).
 
-Die folgenden Befehle müssen lokal am Server oder über einen **separat
-berechtigten Administratorzugang** ausgeführt werden. Entferne zuerst die
-sudoers-Regel: Danach kann die App den Server nicht mehr ausschalten, Wake-on-
-LAN und die normale SSH-Verbindung bleiben aber unverändert.
+## ⚠️ Bewusste Grenzen
 
-~~~bash
-sudo rm /etc/sudoers.d/servergy
-sudo rm /usr/local/sbin/servergy-poweroff
-sudo rm /etc/systemd/system/servergy-poweroff.service
-sudo systemctl daemon-reload
-sudo visudo -c
-~~~
+| Thema | Was du wissen solltest |
+| --- | --- |
+| 🏠 **Ein Server** | Version 1 verwaltet bewusst nur einen Homeserver. |
+| 🌙 **Ausgeschaltete Geräte** | Ein ausgeschalteter Server kann nicht gesucht werden; für den Start braucht er vorab korrekt eingerichtetes Wake-on-LAN. |
+| 📡 **Netzwerksuche** | Die Suche findet SSH-Kandidaten im aktuellen lokalen Netz, aber keine zuverlässigen MAC-Adressen und keine allgemeinen VPN-Ziele. |
+| 🔌 **Wake-on-LAN** | Broadcasts über VPN funktionieren nicht zuverlässig und werden nicht von Servergy eingerichtet. Eine kabelgebundene Netzwerkkarte ist die robuste Wahl. |
+| 🐧 **Shutdown-Helper** | Der dokumentierte komfortable Setup-Weg setzt Debian/Ubuntu mit systemd voraus. |
+| 📱 **Android 17** | Lokale Netzwerkaktionen benötigen die vom System abgefragte Freigabe; ohne sie bleiben manuelle VPN-Konfigurationen möglich. |
 
-Diese Befehle entfernen nur die drei Servergy-Ausschaltdateien. Das Löschen der
-Verbindung in der App entfernt dagegen ausschließlich lokale App-Daten wie
-Profil, Schlüssel, SSH-Passwort und bestätigten Host-Key; es verändert nie den
-Homeserver. Die ausführliche manuelle Einrichtung und Fehleranalyse steht in
-[docs/server-setup.md](docs/server-setup.md).
+## 🧪 Beta und Qualität
 
-## Repository-Struktur
+Die Beta trennt automatisierbare Prüfungen klar von den unverzichtbaren Tests
+in echter Hardware und echten Heimnetzen.
 
-~~~text
-lib/
-  core/models.dart       Domänenmodelle, Validierung und Profilmigration
-  core/services.dart     Preferences, Secure Storage, WOL, Discovery und SSH
-  core/controller.dart   Riverpod-Zustände und abbrechbare Abläufe
-  servergy_app.dart      Dashboard, Onboarding, Einstellungen und Ereignisse
-  main.dart              Flutter-Einstiegspunkt
-android/                 Android-Manifest und lokale Netzwerk-MethodChannel
-docs/server-setup.md     Server- und sudoers-Einrichtung
-docs/architecture.md     Datenfluss, Sicherheits- und Komponentenmodell
-docs/development.md      Lokale Entwicklung, Tests und Debugging
-docs/beta.md             Beta-Status, Testprotokoll und Freigabe
-docs/privacy.md          Lokale Datenverarbeitung
-test/                    Unit- und Fachlogiktests
-~~~
+| Prüfung | Automatisiert | Vor Beta-Release zusätzlich nötig |
+| --- | :---: | --- |
+| Formatierung, statische Analyse und Tests | ✅ | — |
+| Android-, Linux- und Windows-Debug-Build | ✅ | Sichtprüfung auf Zielgeräten |
+| Icon-Konsistenz und Linux-Nutzer-Installer | ✅ | Startmenü-, Deinstallations- und Speicherprüfung auf Linux |
+| Android- und Windows-Signatur | ✅ im Tag-Workflow | Produktive Signatursecrets in GitHub hinterlegen |
+| WOL, SSH, Shutdown und VPN | — | ✅ Mit einem echten Homeserver dokumentieren |
+| Datenschutz und Diagnoseexport | Teilweise | ✅ Export vor dem Senden kontrollieren |
 
-## Beiträge und Branches
+Die verbindliche Testmatrix, Release-Entscheidung und der Umgang mit
+Beta-Feedback sind in [docs/beta.md](docs/beta.md) dokumentiert.
 
-`Dev` ist der Integrationsbranch für die Beta-Entwicklung. `main` bleibt der
-stabile Zielbranch für spätere stabile Releases. Änderungen sollen klein, kommentiert
-und mit `flutter analyze` sowie `flutter test` geprüft sein. Neue Netzwerk- oder
-SSH-Funktionen benötigen zusätzlich Fake-/Fehlerpfadtests und eine manuelle
-Abnahme auf mindestens einem echten Gerät.
+## 💬 Feedback und Fehler melden
 
-## Lizenz und Verteilung
+Beta-Feedback hilft besonders bei echten Netzwerk-, Router-, VPN- und
+Wake-on-LAN-Konstellationen. In der App führt **Einstellungen → Beta-Feedback
+geben** direkt zu den GitHub-Issue-Vorlagen.
 
-Servergy steht unter der MIT-Lizenz. Beta-Artefakte werden als signierte
-GitHub-Pre-Releases veröffentlicht: Android als APK, Linux als Benutzer-Bundle
-mit Startmenü-Installer und Windows als signiertes ZIP. Jede Veröffentlichung
-enthält SHA-256-Prüfsummen und verweist auf die Beta-Feedback-Vorlagen.
+| Melden | Vorlage | Bitte nicht einreichen |
+| --- | --- | --- |
+| 🐛 Reproduzierbarer Fehler | [Beta-Fehler melden](https://github.com/Web-Developer-DB/Servergy/issues/new?template=bug_report.yml) | Passwörter, private Schlüssel, vollständige IP-Adressen, MAC-Adressen oder ungeschwärzte Screenshots |
+| 💡 Bedienbarkeit oder Wunsch | [Beta-Feedback geben](https://github.com/Web-Developer-DB/Servergy/issues/new?template=beta_feedback.yml) | Zugangsdaten oder nicht bewusst kontrollierte Diagnoseinhalte |
+
+Ein Diagnoseexport ist optional und bereits redigiert. Lies ihn trotzdem vor
+dem Hochladen noch einmal durch.
+
+## 📚 Dokumentation
+
+| Dokument | Inhalt |
+| --- | --- |
+| [Beta-Status & Freigabe](docs/beta.md) | Realtest-Matrix, Signaturen, Release-Gates und Feedback-Regeln |
+| [Serveranleitung](docs/server-setup.md) | Wake-on-LAN, SSH-Benutzer, eingeschränkter sudoers-Helper und manueller Fallback |
+| [Architektur](docs/architecture.md) | Datenfluss, Komponenten, Grenzen und Sicherheitsentscheidungen |
+| [Entwicklung & Tests](docs/development.md) | Lokale Entwicklungsumgebung, Builds, Qualität und Realgeräte-Tests |
+| [Datenschutz](docs/privacy.md) | Lokale Datenverarbeitung und redigierte Diagnoseexporte |
+| [Release-Checkliste](docs/release-checklist.md) | Letzte Prüfungen vor einem Beta-Tag |
+
+## 🤝 Mitwirken
+
+`Dev` ist der Integrationsbranch für die Beta-Entwicklung; `main` bleibt der
+stabile Zielbranch für spätere stabile Releases.
+
+Bevor du einen Pull Request öffnest:
+
+```bash
+dart format lib test tool
+flutter analyze
+flutter test
+dart run tool/generate_launcher_icons.dart
+```
+
+Neue Netzwerk- oder SSH-Funktionen benötigen neben Tests immer eine bewusste
+Prüfung von Fehlerpfaden, Abbrüchen und realen Geräten. Zugangsdaten, private
+Schlüssel, persönliche Netzwerkdaten und echte Diagnosen gehören niemals in
+Commits, Tests oder Screenshots.
+
+## 📄 Lizenz
+
+Servergy steht unter der [MIT-Lizenz](LICENSE).
+
+---
+
+<p align="center">
+  Entwickelt für einen ruhigeren, sichereren Homeserver-Alltag. 🏠
+</p>
