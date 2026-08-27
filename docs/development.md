@@ -75,9 +75,13 @@ Testreihenfolge:
 4. Den angezeigten Host-Key direkt am Server vergleichen.
 5. Prüfen, dass das Passwort nach einem App-Neustart nicht erneut abgefragt wird.
 6. WOL konfigurieren; der Server muss hierfür noch eingeschaltet sein.
-7. SSH-Test ausführen.
-8. Servergy-Shutdown bestätigen und beobachten, dass der SSH-Port verschwindet.
-9. Danach „Server starten“ verwenden und maximal 90 Sekunden auf SSH warten.
+7. Falls der Helper noch fehlt: **Einstellungen → Server später starten →
+   Server vorbereiten** wählen, die angekündigten Änderungen bestätigen und
+   ein einmaliges sudo-Passwort eingeben. Es darf nicht nach einem App-Neustart
+   erneut abgefragt oder gespeichert angezeigt werden.
+8. SSH-Test ausführen.
+9. Servergy-Shutdown bestätigen und beobachten, dass der SSH-Port verschwindet.
+10. Danach „Server starten“ verwenden und maximal 90 Sekunden auf SSH warten.
 
 ## Fehleranalyse
 
@@ -92,6 +96,11 @@ Testreihenfolge:
 - `wake_timeout`: Server-WOL, Broadcast-Adresse, Switch und BIOS prüfen.
 - `poweroff_not_acknowledged`: Helper-Rechte, sudoers und exakte Bestätigung
   `servergy-poweroff-accepted` prüfen.
+- `provision_sudo_denied`: Der SSH-Benutzer darf keine einmalige
+  Administratorinstallation ausführen; die manuelle Serveranleitung an der
+  Serverkonsole verwenden.
+- `provision_sudo_auth_failed`: Das temporär eingegebene sudo-Passwort wurde
+  abgelehnt und wurde nicht gespeichert.
 
 ## Code-Konventionen
 

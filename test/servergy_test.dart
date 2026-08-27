@@ -95,10 +95,69 @@ void main() {
     expect(profile.canWake, isTrue);
   });
 
+  test('accepts only the fixed Debian Wake-on-LAN inspection response', () {
+    final (interfaceName, mac) = parseWakeOnLanInspection(
+      'servergy-wol-v1\tenp3s0\tAA:BB:CC:DD:EE:FF\n',
+    );
+
+    expect(interfaceName, 'enp3s0');
+    expect(mac.toString(), 'AA:BB:CC:DD:EE:FF');
+  });
+
+  test('rejects malformed Wake-on-LAN inspection responses', () {
+    expect(
+      () => parseWakeOnLanInspection('enp3s0\tAA:BB:CC:DD:EE:FF'),
+      throwsA(isA<ServergyError>()),
+    );
+    expect(
+      () => parseWakeOnLanInspection('servergy-wol-v1\tlo\t00:00:00:00:00:00'),
+      throwsA(isA<ServergyError>()),
+    );
+    expect(
+      () => parseWakeOnLanInspection(
+        'servergy-wol-v1\tbad name\tAA:BB:CC:DD:EE:FF',
+      ),
+      throwsA(isA<ServergyError>()),
+    );
+  });
+
   test('expresses password writes without exposing a stored password', () {
     expect(const SecretUpdate.keep().kind, SecretUpdateKind.keep);
     expect(const SecretUpdate.delete().kind, SecretUpdateKind.delete);
     expect(const SecretUpdate.replace('secret').value, 'secret');
+  });
+
+  test(
+    'provisioning payload is immutable and renders one narrow sudo rule',
+    () {
+      expect(ServergyProvisioningPayload.hasExpectedIntegrity, isTrue);
+      expect(
+        ServergyProvisioningPayload.sudoersFor('servergy'),
+        'servergy ALL=(root) NOPASSWD: /usr/local/sbin/servergy-poweroff\n',
+      );
+      expect(ServergyProvisioningPayload.helper, contains('start --no-block'));
+      expect(
+        ServergyProvisioningPayload.helper,
+        contains('servergy-poweroff-accepted'),
+      );
+      expect(
+        ServergyProvisioningPayload.helper,
+        isNot(contains('shutdown now')),
+      );
+    },
+  );
+
+  test('provisioning accepts only safe Linux user names for sudoers', () {
+    expect(validateProvisioningUsername('servergy'), 'servergy');
+    expect(validateProvisioningUsername('_service-2'), '_service-2');
+    expect(
+      () => validateProvisioningUsername('servergy ALL=(ALL) ALL'),
+      throwsA(isA<ServergyError>()),
+    );
+    expect(
+      () => validateProvisioningUsername('root; shutdown'),
+      throwsA(isA<ServergyError>()),
+    );
   });
 
   test('validates hosts, ports, and IPv4 broadcast addresses', () {

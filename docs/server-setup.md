@@ -32,6 +32,13 @@ Notiere die MAC-Adresse des kabelgebundenen Netzwerkadapters:
 ip link show <netzwerk-interface>
 ~~~
 
+Nach erfolgreicher SSH-Prüfung kann Servergy diese MAC-Adresse automatisch
+vom Adapter der Standardroute auslesen und die lokale Broadcast-Adresse des
+Telefons vorschlagen. Prüfe die angezeigten Werte trotzdem bei mehreren
+Netzwerkkarten, VLANs oder einer VPN-Verbindung. Die automatische Erkennung
+benötigt keinen sudo-Zugriff und ersetzt keinen echten WOL-Test nach dem
+Herunterfahren.
+
 Wake-on-LAN über WLAN wird nur von wenigen Adaptern zuverlässig unterstützt.
 Eine kabelgebundene Verbindung ist die robuste Wahl.
 
@@ -73,6 +80,27 @@ sudo systemctl status ssh
 ~~~
 
 ## 3. Ausschalt-Unit und engen Helper erstellen
+
+### Bequemer Weg: einmalig mit Servergy vorbereiten
+
+Wenn die SSH-Verbindung in Servergy bereits geprüft ist, öffne
+**Einstellungen → Server später starten → Server vorbereiten**. Nach einer
+ausdrücklichen Bestätigung fragt die App einmalig nach dem sudo-Passwort des
+konfigurierten SSH-Benutzers. Dieses Passwort wird nur über die bestehende
+SSH-Verbindung verwendet und weder angezeigt noch gespeichert.
+
+Die App installiert genau die in diesem Abschnitt gezeigte systemd-Unit, den
+root-eigenen Helper und die eine, darauf beschränkte sudoers-Regel. Sie startet
+den Helper dabei nicht – der Server bleibt eingeschaltet. Der erste echte
+Herunterfahrvorgang in Servergy ist anschließend der Funktionsnachweis.
+
+Voraussetzungen für die grafische Vorbereitung sind Debian mit systemd, ein
+bereits bestätigter SSH-Fingerprint und ein SSH-Benutzer, der für diese
+einmalige Installation sudo ausführen darf. Die App fügt den Benutzer nicht zu
+Gruppen hinzu und kann keine Administratorrechte erzeugen. Fehlt sudo-Zugang,
+nutze den folgenden manuellen Weg an der Serverkonsole.
+
+### Manueller Weg
 
 Die Unit nimmt den Auftrag zuerst entgegen und wartet kurz, bevor der Rechner
 wirklich ausgeschaltet wird. Dadurch kann Servergy den bestätigten Auftrag noch
@@ -206,5 +234,11 @@ abschließend Wake-on-LAN testen.
   -E sha256`. Akzeptiere einen geänderten Key nicht blind.
 - Bei „Ausschaltbefehl abgelehnt“ prüfe mit `sudo -l -U servergy`, dass nur
   `/usr/local/sbin/servergy-poweroff` freigegeben ist.
+- Dass `sudo shutdown now` nach einer manuellen Passworteingabe funktioniert,
+  reicht für Servergy bewusst nicht aus. Die App führt keinen allgemeinen
+  Shutdown-Befehl aus und speichert kein sudo-Passwort. Installiere stattdessen
+  die oben beschriebene Unit, den argumentlosen Helper und die eine
+  `NOPASSWD`-sudoers-Regel; nur dann kann der Server den sicheren Auftrag mit
+  `servergy-poweroff-accepted` bestätigen.
 - Das Diagnoseprotokoll der App enthält nur Zeit, Aktion, Fehlercode und Dauer;
   es exportiert nie Zugangsdaten, Schlüssel, Hostadressen oder MAC-Adressen.
