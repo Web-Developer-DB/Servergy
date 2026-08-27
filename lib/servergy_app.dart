@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 
 import 'core/controller.dart';
+import 'core/app_metadata.dart';
 import 'core/models.dart';
 
 class ServergyApp extends StatelessWidget {
@@ -28,34 +29,54 @@ class ServergyApp extends StatelessWidget {
 }
 
 ThemeData _theme(Brightness brightness) {
-  const navy = Color(0xff071f2d);
+  const navy = Color(0xff092a3d);
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(seedColor: navy, brightness: brightness)
       .copyWith(
-        primary: dark ? const Color(0xff00d878) : const Color(0xff007a43),
+        primary: dark ? const Color(0xff4ee29a) : const Color(0xff007a43),
         onPrimary: dark ? navy : Colors.white,
-        secondary: dark ? const Color(0xff08bce8) : const Color(0xff007a9e),
+        secondary: dark ? const Color(0xff75d6f4) : const Color(0xff006782),
         onSecondary: dark ? navy : Colors.white,
-        tertiary: dark ? const Color(0xff08bce8) : navy,
-        surface: dark ? const Color(0xff0d1d27) : const Color(0xfff8fafc),
+        tertiary: dark ? const Color(0xff8ec8ff) : const Color(0xff185c81),
+        surface: dark ? const Color(0xff101d27) : const Color(0xfff6f8fb),
+        surfaceContainerLow: dark
+            ? const Color(0xff172934)
+            : const Color(0xffffffff),
+        surfaceContainerHighest: dark
+            ? const Color(0xff263a46)
+            : const Color(0xffeaf0f5),
       );
-  const shape = RoundedRectangleBorder(
-    borderRadius: BorderRadius.all(Radius.circular(20)),
+  const cardShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(24)),
   );
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: scheme.surface,
+    textTheme: Typography.material2021().black.apply(
+      bodyColor: scheme.onSurface,
+      displayColor: scheme.onSurface,
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       foregroundColor: scheme.onSurface,
       scrolledUnderElevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: scheme.onSurface,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
     ),
     cardTheme: CardThemeData(
       color: scheme.surfaceContainerLow,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: shape,
+      shape: cardShape,
+    ),
+    listTileTheme: ListTileThemeData(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      shape: cardShape,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -75,19 +96,24 @@ ThemeData _theme(Brightness brightness) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(54),
-        shape: shape,
+        minimumSize: const Size.fromHeight(52),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(54),
-        shape: shape,
+        minimumSize: const Size.fromHeight(52),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
       ),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      shape: shape,
+      shape: cardShape,
     ),
   );
 }
@@ -117,23 +143,15 @@ class HomeScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Diagnose',
-            onPressed: () => _open(context, const DiagnosticsScreen()),
-            icon: const Icon(Icons.article_outlined),
+            tooltip: 'Ereignisse',
+            onPressed: () => _open(context, const EventsScreen()),
+            icon: const Icon(Icons.receipt_long_outlined),
           ),
           IconButton(
             tooltip: 'Einstellungen',
-            onPressed: () => _open(context, const SetupScreen()),
+            onPressed: () => _open(context, const SettingsScreen()),
             icon: const Icon(Icons.settings_outlined),
           ),
-          if (profile != null)
-            IconButton(
-              tooltip: 'Verbindung löschen',
-              onPressed: state.busy
-                  ? null
-                  : () => _deleteConnectionFromHome(context, ref),
-              icon: const Icon(Icons.delete_outline_rounded),
-            ),
         ],
       ),
       body: Center(
@@ -142,24 +160,27 @@ class HomeScreen extends ConsumerWidget {
           child: SafeArea(
             top: false,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
               children: [
                 Text(
-                  'Dein Homeserver.',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  profile == null ? 'Dein Homeserver.' : 'Guten Tag.',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w800,
+                    letterSpacing: -.5,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Lokal steuern – im Heimnetz oder über dein VPN.',
+                  profile == null
+                      ? 'Lokal steuern – im Heimnetz oder über dein VPN.'
+                      : 'Deine Verbindung auf einen Blick.',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 _StatusCard(state: state),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 if (profile == null)
                   const _SetupCallout()
                 else
@@ -175,16 +196,6 @@ class HomeScreen extends ConsumerWidget {
 
 void _open(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
-
-/// Keeps the destructive action discoverable on the dashboard as well as in
-/// settings, while always requiring the same explicit confirmation.
-Future<void> _deleteConnectionFromHome(
-  BuildContext context,
-  WidgetRef ref,
-) async {
-  if (!await _confirmConnectionDeletion(context)) return;
-  await ref.read(controllerProvider.notifier).deleteConnection();
-}
 
 class _StatusCard extends ConsumerWidget {
   const _StatusCard({required this.state});
@@ -230,9 +241,18 @@ class _StatusCard extends ConsumerWidget {
         'Aktualisiere, um den Status zu sehen',
       ),
     };
-    return Card(
+    final lastCheck = _lastRelevantEvent(state.diagnostics);
+    return Material(
+      color: scheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: color.withValues(alpha: .28)),
+        ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -258,7 +278,7 @@ class _StatusCard extends ConsumerWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Text(title, style: TextStyle(color: color)),
+                      Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
@@ -271,15 +291,37 @@ class _StatusCard extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             Text(detail, style: TextStyle(color: scheme.onSurfaceVariant)),
-            if (state.profile != null) ...[
-              const SizedBox(height: 14),
-              Chip(
-                avatar: const Icon(Icons.dns_outlined, size: 18),
-                label: Text(state.profile!.host),
+            const SizedBox(height: 14),
+            Text(
+              lastCheck == null
+                  ? 'Noch nicht geprüft'
+                  : 'Zuletzt geprüft: ${_formatMoment(lastCheck.at)}',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: scheme.onSurfaceVariant,
               ),
-            ],
+            ),
+            if (state.profile != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 2),
+                  leading: const Icon(Icons.dns_outlined),
+                  title: const Text('Verbindungsdetails'),
+                  subtitle: const Text('Adresse und SSH-Port'),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SelectableText(
+                        '${state.profile!.host}:${state.profile!.sshPort}',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (state.busy) ...[
               const SizedBox(height: 18),
               const LinearProgressIndicator(
@@ -296,7 +338,7 @@ class _StatusCard extends ConsumerWidget {
             ],
           ],
         ),
-      ),
+      )),
     );
   }
 }
@@ -304,12 +346,22 @@ class _StatusCard extends ConsumerWidget {
 class _SetupCallout extends StatelessWidget {
   const _SetupCallout();
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(24),
+    ),
     child: Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Icon(
+            Icons.rocket_launch_outlined,
+            color: Theme.of(context).colorScheme.secondary,
+            size: 28,
+          ),
+          const SizedBox(height: 16),
           Text(
             'Einmal einrichten',
             style: Theme.of(
@@ -323,7 +375,7 @@ class _SetupCallout extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           FilledButton.icon(
             onPressed: () => _open(context, const SetupScreen()),
             icon: const Icon(Icons.add_rounded),
@@ -346,16 +398,22 @@ class _Actions extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Schnellaktionen',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        const _SectionHeading(
+          title: 'Schnellaktionen',
+          subtitle: 'Steuere deinen Server sicher von diesem Gerät.',
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: state.busy || !profile.canWake ? null : controller.wake,
-          icon: const Icon(Icons.keyboard_double_arrow_up_rounded),
+          onPressed: state.busy
+              ? null
+              : profile.canWake
+              ? controller.wake
+              : () => _open(context, const SetupScreen(initialStep: 4)),
+          icon: Icon(
+            profile.canWake
+                ? Icons.keyboard_double_arrow_up_rounded
+                : Icons.add_link_rounded,
+          ),
           label: Text(
             profile.canWake ? 'Server starten' : 'Wake-on-LAN noch einrichten',
           ),
@@ -368,6 +426,23 @@ class _Actions extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: Icon(
+              Icons.verified_user_outlined,
+              color: scheme.secondary,
+            ),
+            title: const Text('SSH-Verbindung testen'),
+            subtitle: const Text('Zugang und Serveridentität prüfen'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            enabled: !state.busy,
+            onTap: () => controller.testSsh(
+              (request) => _askCredentials(context, request),
+              (fingerprint) => _confirmTrust(context, fingerprint),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
             foregroundColor: scheme.error,
@@ -379,30 +454,52 @@ class _Actions extends ConsumerWidget {
           icon: const Icon(Icons.keyboard_double_arrow_down_rounded),
           label: const Text('Server herunterfahren'),
         ),
-        const SizedBox(height: 16),
-        Card(
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 8,
-            ),
-            leading: Icon(
-              Icons.verified_user_outlined,
-              color: scheme.secondary,
-            ),
-            title: const Text('SSH-Verbindung testen'),
-            subtitle: const Text('Prüft Zugangsdaten und Server-Fingerprint.'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            enabled: !state.busy,
-            onTap: () => controller.testSsh(
-              (request) => _askCredentials(context, request),
-              (fingerprint) => _confirmTrust(context, fingerprint),
-            ),
-          ),
-        ),
       ],
     );
   }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        subtitle,
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+    ],
+  );
+}
+
+DiagnosticEvent? _lastRelevantEvent(List<DiagnosticEvent> events) {
+  final matching = events.where(
+    (event) => event.action == DiagnosticAction.refresh ||
+        event.action == DiagnosticAction.sshTest ||
+        event.action == DiagnosticAction.load,
+  );
+  return matching.isEmpty ? null : matching.last;
+}
+
+String _formatMoment(DateTime time) {
+  final now = DateTime.now();
+  final sameDay = now.year == time.year && now.month == time.month && now.day == time.day;
+  final hour = time.hour.toString().padLeft(2, '0');
+  final minute = time.minute.toString().padLeft(2, '0');
+  return sameDay
+      ? 'heute, $hour:$minute'
+      : '${time.day.toString().padLeft(2, '0')}.${time.month.toString().padLeft(2, '0')}.$hour:$minute';
 }
 
 Future<void> _confirmShutdown(
@@ -726,8 +823,292 @@ Future<String?> _askSudoPassword(BuildContext context) async {
   return value == null || value.isEmpty ? null : value;
 }
 
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(controllerProvider);
+    final profile = state.profile;
+    final controller = ref.read(controllerProvider.notifier);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Einstellungen')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        children: [
+          const _SectionHeading(
+            title: 'Dein Servergy',
+            subtitle: 'Verbindung, Steuerung und Produktinformationen.',
+          ),
+          const SizedBox(height: 20),
+          if (profile == null) ...[
+            _SettingsGroup(
+              title: 'Homeserver',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.add_home_outlined),
+                  title: const Text('Homeserver einrichten'),
+                  subtitle: const Text('Starte den sicheren Einrichtungsassistenten.'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _open(context, const SetupScreen()),
+                ),
+              ],
+            ),
+          ] else ...[
+            _SettingsGroup(
+              title: 'Verbindung',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.dns_outlined),
+                  title: const Text('Serververbindung'),
+                  subtitle: Text('${profile.name} · ${profile.host}:${profile.sshPort}'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _open(context, const SetupScreen(initialStep: 1)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _SettingsGroup(
+              title: 'Steuerung',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.wifi_tethering_rounded),
+                  title: const Text('Wake-on-LAN'),
+                  subtitle: Text(
+                    profile.canWake
+                        ? 'Für diesen Server eingerichtet'
+                        : 'Noch nicht eingerichtet',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _open(context, const SetupScreen(initialStep: 4)),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings_outlined),
+                  title: const Text('Sicheres Herunterfahren'),
+                  subtitle: const Text('Servergy-Helper auf dem Server verwalten'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _open(
+                    context,
+                    _PoweroffSettingsScreen(controller: controller),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
+          _SettingsGroup(
+            title: 'Datenschutz & Diagnose',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: const Text('Ereignisse'),
+                subtitle: const Text('Lokales, redigiertes Aktivitätsprotokoll'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _open(context, const EventsScreen()),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const _AboutServergySection(),
+          if (profile != null) ...[
+            const SizedBox(height: 20),
+            _SettingsGroup(
+              title: 'Gefahrenbereich',
+              children: [
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline_rounded,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: Text(
+                    'Verbindung löschen',
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                  subtitle: const Text('Profil und lokale Zugangsdaten entfernen'),
+                  enabled: !state.busy,
+                  onTap: () async {
+                    if (!await _confirmConnectionDeletion(context) || !context.mounted) return;
+                    await controller.deleteConnection();
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PoweroffSettingsScreen extends StatelessWidget {
+  const _PoweroffSettingsScreen({required this.controller});
+  final ServerController controller;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Sicheres Herunterfahren')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const _StepInfo(
+          icon: Icons.shield_outlined,
+          text: 'Der eingeschränkte Servergy-Helper erlaubt ausschließlich das sichere Herunterfahren. Das sudo-Passwort wird nie gespeichert.',
+        ),
+        const SizedBox(height: 24),
+        FilledButton.icon(
+          onPressed: () => _offerServerPreparation(context, controller),
+          icon: const Icon(Icons.admin_panel_settings_outlined),
+          label: const Text('Server vorbereiten'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _offerHelperRemoval(context, controller),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+            side: BorderSide(color: Theme.of(context).colorScheme.error),
+          ),
+          icon: const Icon(Icons.delete_sweep_outlined),
+          label: const Text('Installierten Helper entfernen'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      Card(child: Column(children: children)),
+    ],
+  );
+}
+
+class _AboutServergySection extends ConsumerWidget {
+  const _AboutServergySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final metadata = ref.watch(appMetadataProvider);
+    return _SettingsGroup(
+      title: 'Über Servergy',
+      children: [
+        ListTile(
+          leading: const ServergyMark(),
+          title: const Text('Servergy'),
+          subtitle: Text(metadata.when(
+            data: (value) => '${value.releaseChannel} · ${value.versionLabel}',
+            loading: () => 'Produktinformationen werden geladen',
+            error: (_, _) => 'Produktinformationen nicht verfügbar',
+          )),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(18, 0, 18, 12),
+          child: Text('Wake-on-LAN und sichere SSH-Steuerung für deinen Homeserver.'),
+        ),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: const Text('Datenschutz'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => _open(
+            context,
+            const DocumentScreen(title: 'Datenschutz', asset: 'docs/privacy.md'),
+          ),
+        ),
+        const Divider(height: 1),
+        ListTile(
+          leading: const Icon(Icons.menu_book_outlined),
+          title: const Text('Serveranleitung'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => _open(
+            context,
+            const DocumentScreen(
+              title: 'Serveranleitung',
+              asset: 'docs/server-setup.md',
+            ),
+          ),
+        ),
+        metadata.maybeWhen(
+          data: (value) => Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: value.supportText));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Versionsinformationen kopiert.')),
+                  );
+                }
+              },
+              icon: const Icon(Icons.copy_outlined),
+              label: const Text('Versionsinformationen kopieren'),
+            ),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+class DocumentScreen extends StatelessWidget {
+  const DocumentScreen({super.key, required this.title, required this.asset});
+  final String title;
+  final String asset;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: FutureBuilder<String>(
+      future: rootBundle.loadString(asset),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Text('Dieses Dokument konnte nicht geladen werden.'),
+            ),
+          );
+        }
+        return SelectionArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                snapshot.requireData,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
 class SetupScreen extends ConsumerStatefulWidget {
-  const SetupScreen({super.key});
+  const SetupScreen({super.key, this.initialStep = 0});
+  final int initialStep;
   @override
   ConsumerState<SetupScreen> createState() => _SetupScreenState();
 }
@@ -746,20 +1127,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   // search results from hiding the next required field on small phones.
   final _hostFieldKey = GlobalKey();
   final _macFieldKey = GlobalKey();
-  // Stepper manages a long form on small phones. Keeping the controller here
-  // lets Flutter retain a stable scroll position during rebuilds.
+  // The focused setup flow keeps one step visible at a time. The controller
+  // preserves a stable scroll position while discovery results expand.
   final _stepScrollController = ScrollController();
   var _step = 0;
-  // A new setup must be completed in order. Existing profiles already contain
-  // all values, so their settings can be opened at any step straight away.
+  // A new setup must be completed in order. Existing profiles unlock every
+  // step and are opened from the dedicated settings overview.
   var _furthestUnlockedStep = 0;
   var _mode = AuthenticationMode.keyPreferred;
   var _configureWake = false;
   var _connectionVerified = false;
-  // Only an already saved profile is being edited in Settings. A profile that
-  // was just verified during first-run setup should not immediately offer a
-  // destructive action before the user has even finished the assistant.
-  var _editingExistingConnection = false;
   String? _keyPem;
   String? _selectedCandidateKey;
   DiscoveredServer? _selectedCandidate;
@@ -770,9 +1147,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     super.initState();
     final p = ref.read(controllerProvider).profile;
     if (p != null) {
-      _editingExistingConnection = true;
       _furthestUnlockedStep = 4;
       _connectionVerified = true;
+      _step = widget.initialStep.clamp(0, 4);
       _name.text = p.name;
       _host.text = p.host;
       _sshPort.text = '${p.sshPort}';
@@ -806,172 +1183,121 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(
-        ref.read(controllerProvider).profile == null
-            ? 'Homeserver einrichten'
-            : 'Einstellungen',
+  Widget build(BuildContext context) {
+    final existing = ref.read(controllerProvider).profile != null;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(existing ? 'Verbindung bearbeiten' : 'Homeserver einrichten'),
       ),
-      actions: [
-        if (_editingExistingConnection)
-          IconButton(
-            tooltip: 'Verbindung löschen',
-            onPressed: ref.watch(controllerProvider).busy
-                ? null
-                : _deleteConnection,
-            icon: const Icon(Icons.delete_outline_rounded),
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: _form,
+          child: Column(
+            children: [
+              _SetupProgress(step: _step),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _stepScrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                  child: _stepContent(),
+                ),
+              ),
+              _setupControls(),
+            ],
           ),
-      ],
-    ),
-    body: SafeArea(
-      top: false,
-      child: Form(
-        key: _form,
-        child: Stepper(
-          controller: _stepScrollController,
-          physics: const ClampingScrollPhysics(),
-          // The default Stepper margin is generous on tablets but makes the
-          // content too narrow on phones. A small, explicit margin works from
-          // compact phones through desktop windows without touching the rail.
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 28),
-          clipBehavior: Clip.none,
-          currentStep: _step,
-          onStepTapped: _goToStep,
-          onStepCancel: _step == 0
-              ? () => Navigator.pop(context)
-              : () => _goToStep(_step - 1),
-          onStepContinue: _continue,
-          controlsBuilder: (context, details) => _stepControls(details),
-          steps: [
-            Step(
-              title: const Text('Netzwerkgrenze'),
-              isActive: _isStepUnlocked(0),
-              state: _stepState(0),
-              content: _stepContent(
-                const _StepInfo(
-                  icon: Icons.home_outlined,
-                  text:
-                      'Für die Ersteinrichtung muss dein Homeserver eingeschaltet und im Heimnetz erreichbar sein. Servergy arbeitet im Heimnetz oder über ein vorhandenes VPN. Die automatische Suche prüft nur dein aktuelles lokales Netz; VPN-Ziele trägst du manuell ein.',
-                ),
-              ),
-            ),
-            Step(
-              title: const Text('Server finden'),
-              isActive: _isStepUnlocked(1),
-              state: _stepState(1),
-              content: _stepContent(
-                Column(
-                  children: [
-                    _field(
-                      _name,
-                      'Anzeigename',
-                      Icons.badge_outlined,
-                      onChanged: _markConnectionUnverified,
-                    ),
-                    _field(
-                      _sshPort,
-                      'SSH-Port',
-                      Icons.settings_ethernet_rounded,
-                      number: true,
-                      onChanged: _markConnectionUnverified,
-                    ),
-                    _discoveryCard(),
-                    const SizedBox(height: 12),
-                    _field(
-                      _host,
-                      'Hostname oder IP-Adresse',
-                      Icons.lan_outlined,
-                      containerKey: _hostFieldKey,
-                      onChanged: _markConnectionUnverified,
-                    ),
-                    _field(
-                      _user,
-                      'SSH-Benutzername',
-                      Icons.person_outline_rounded,
-                      onChanged: _markConnectionUnverified,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Step(
-              title: const Text('SSH-Zugang'),
-              isActive: _isStepUnlocked(2),
-              state: _stepState(2),
-              content: _stepContent(_authStep()),
-            ),
-            Step(
-              title: const Text('Verbindung prüfen'),
-              isActive: _isStepUnlocked(3),
-              state: _stepState(3),
-              content: _stepContent(
-                const _StepInfo(
-                  icon: Icons.verified_user_outlined,
-                  text:
-                      'Prüfe jetzt SSH-Zugang und Serveridentität. Beim ersten Kontakt auf diesem Gerät wird Schlüsseltyp und SHA-256-Fingerprint angezeigt. Vergleiche ihn direkt am Server, bevor du vertraust.',
-                ),
-              ),
-            ),
-            Step(
-              title: const Text('Server später starten'),
-              isActive: _isStepUnlocked(4),
-              state: _stepState(4),
-              content: _stepContent(_wakeStep()),
-            ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepContent() {
+    final (title, description, content) = switch (_step) {
+      0 => (
+        'Dein Netzwerk',
+        'Lege zuerst die sichere Grundlage für die Verbindung.',
+        const _StepInfo(
+          icon: Icons.home_outlined,
+          text:
+              'Für die Ersteinrichtung muss dein Homeserver eingeschaltet und im Heimnetz erreichbar sein. Servergy arbeitet im Heimnetz oder über ein vorhandenes VPN. Die automatische Suche prüft nur dein aktuelles lokales Netz; VPN-Ziele trägst du manuell ein.',
+        ),
+      ),
+      1 => (
+        'Server finden',
+        'Suche im Heimnetz oder trage deine Daten manuell ein.',
+        Column(
+          children: [
+            _field(_name, 'Anzeigename', Icons.badge_outlined, onChanged: _markConnectionUnverified),
+            _field(_sshPort, 'SSH-Port', Icons.settings_ethernet_rounded, number: true, onChanged: _markConnectionUnverified),
+            _discoveryCard(),
+            const SizedBox(height: 12),
+            _field(_host, 'Hostname oder IP-Adresse', Icons.lan_outlined, containerKey: _hostFieldKey, onChanged: _markConnectionUnverified),
+            _field(_user, 'SSH-Benutzername', Icons.person_outline_rounded, onChanged: _markConnectionUnverified),
           ],
         ),
       ),
-    ),
-  );
-
-  /// Adds breathing room above every step's first child. Floating field labels
-  /// can otherwise be clipped by the Stepper's expanding/collapsing viewport.
-  Widget _stepContent(Widget child) =>
-      Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 4), child: child);
-
-  /// Keeps the labels in their hit areas even with large system fonts. The
-  /// stacked layout is deliberately used at every width: the Stepper's rail
-  /// leaves little space on phones, and this avoids resolution-dependent rows.
-  Widget _stepControls(ControlsDetails details) => Padding(
-    padding: const EdgeInsets.only(top: 20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      2 => (
+        'SSH-Zugang',
+        'Wähle, wie Servergy sich sicher anmelden soll.',
+        _authStep(),
+      ),
+      3 => (
+        'Verbindung prüfen',
+        'Bestätige die Identität deines Servers vor dem Speichern.',
+        const _StepInfo(
+          icon: Icons.verified_user_outlined,
+          text:
+              'Prüfe jetzt SSH-Zugang und Serveridentität. Beim ersten Kontakt auf diesem Gerät wird Schlüsseltyp und SHA-256-Fingerprint angezeigt. Vergleiche ihn direkt am Server, bevor du vertraust.',
+        ),
+      ),
+      _ => (
+        'Server später starten',
+        'Wake-on-LAN ist optional und kann jederzeit geändert werden.',
+        _wakeStep(),
+      ),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FilledButton(
-          onPressed: details.onStepContinue,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(54),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-          child: Text(switch (_step) {
-            3 => 'Verbindung prüfen und speichern',
-            4 => 'Fertig',
-            _ => 'Weiter',
-          }, textAlign: TextAlign.center),
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: details.onStepCancel,
-          style: TextButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-          ),
-          child: Text(
-            _step == 0 ? 'Abbrechen' : 'Zurück',
-            textAlign: TextAlign.center,
-          ),
-        ),
+        Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Text(description, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 28),
+        content,
       ],
+    );
+  }
+
+  Widget _setupControls() => SafeArea(
+    top: false,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton(
+            onPressed: _continue,
+            child: Text(switch (_step) {
+              3 => 'Verbindung prüfen und speichern',
+              4 => 'Einrichtung abschließen',
+              _ => 'Weiter',
+            }),
+          ),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: _step == 0 ? () => Navigator.pop(context) : () => _goToStep(_step - 1),
+            child: Text(_step == 0 ? 'Abbrechen' : 'Zurück'),
+          ),
+        ],
+      ),
     ),
   );
 
   bool _isStepUnlocked(int target) => target <= _furthestUnlockedStep;
-
-  StepState _stepState(int target) =>
-      _isStepUnlocked(target) ? StepState.indexed : StepState.disabled;
 
   void _goToStep(int target) {
     if (!_isStepUnlocked(target)) {
@@ -1129,74 +1455,6 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           text:
               'Kein Problem: Wake-on-LAN kannst du später in den Einstellungen ergänzen.',
         ),
-      if (_editingExistingConnection) ...[
-        const SizedBox(height: 24),
-        const Divider(),
-        const SizedBox(height: 8),
-        Text(
-          'Sicheres Herunterfahren',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Installiert einmalig den eingeschränkten Servergy-Helper. Das sudo-Passwort wird nur während der Einrichtung verwendet und nicht gespeichert.',
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: ref.watch(controllerProvider).busy
-              ? null
-              : () => _offerServerPreparation(
-                  context,
-                  ref.read(controllerProvider.notifier),
-                ),
-          icon: const Icon(Icons.admin_panel_settings_outlined),
-          label: const Text('Server vorbereiten', textAlign: TextAlign.center),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: ref.watch(controllerProvider).busy
-              ? null
-              : () => _offerHelperRemoval(
-                  context,
-                  ref.read(controllerProvider.notifier),
-                ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
-            side: BorderSide(color: Theme.of(context).colorScheme.error),
-          ),
-          icon: const Icon(Icons.delete_sweep_outlined),
-          label: const Text(
-            'Installierten Helper entfernen',
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 24),
-        const Divider(),
-        const SizedBox(height: 8),
-        Text(
-          'Verbindung entfernen',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Löscht das Serverprofil sowie gespeicherte Zugangsdaten und den bestätigten SSH-Fingerprint von diesem Gerät.',
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: ref.watch(controllerProvider).busy
-              ? null
-              : _deleteConnection,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
-            side: BorderSide(color: Theme.of(context).colorScheme.error),
-            minimumSize: const Size.fromHeight(52),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
-          icon: const Icon(Icons.delete_outline_rounded),
-          label: const Text('Verbindung löschen', textAlign: TextAlign.center),
-        ),
-      ],
     ],
   );
 
@@ -1618,9 +1876,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         return;
       }
       final position = _stepScrollController.position;
-      // Stepper expands and collapses between frames, so its internal child
-      // offsets are not stable. The rendered on-screen position is reliable:
-      // move just far enough to place the fresh field below the app bar.
+      // The focused page may grow when discovery results arrive. The rendered
+      // on-screen position remains reliable while that happens.
       final targetOffset =
           position.pixels +
           target.localToGlobal(Offset.zero).dy -
@@ -1667,13 +1924,50 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     if (saved && mounted) Navigator.pop(context);
   }
 
-  Future<void> _deleteConnection() async {
-    if (!await _confirmConnectionDeletion(context) || !mounted) return;
-    final deleted = await ref
-        .read(controllerProvider.notifier)
-        .deleteConnection();
-    if (deleted && mounted) Navigator.pop(context);
-  }
+}
+
+class _SetupProgress extends StatelessWidget {
+  const _SetupProgress({required this.step});
+  final int step;
+
+  static const _labels = [
+    'Netzwerk',
+    'Server',
+    'Zugang',
+    'Prüfung',
+    'Starten',
+  ];
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Schritt ${step + 1} von ${_labels.length}', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        Row(
+          children: List.generate(_labels.length, (index) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: index == _labels.length - 1 ? 0 : 5),
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  color: index <= step
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+          )),
+        ),
+        const SizedBox(height: 7),
+        Text(_labels[step], style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      ],
+    ),
+  );
 }
 
 Future<bool> _confirmConnectionDeletion(BuildContext context) async =>
@@ -1717,58 +2011,51 @@ class _StepInfo extends StatelessWidget {
   );
 }
 
-class DiagnosticsScreen extends ConsumerWidget {
-  const DiagnosticsScreen({super.key});
+class EventsScreen extends ConsumerWidget {
+  const EventsScreen({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final events = ref.watch(controllerProvider).diagnostics.reversed.toList();
     final report = events.map((e) => e.toExportLine()).join('\n');
+    final latest = events.isEmpty ? null : events.first;
     return Scaffold(
-      appBar: AppBar(title: const Text('Diagnose')),
+      appBar: AppBar(title: const Text('Ereignisse')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
-          Text(
-            'Lokales Diagnoseprotokoll',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          const _SectionHeading(
+            title: 'Aktivität',
+            subtitle: 'Lokale Ereignisse ohne sensible Verbindungsdaten.',
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Es enthält keine Passwörter, Schlüssel, Benutzernamen, Hostadressen oder MAC-Adressen.',
-          ),
+          const SizedBox(height: 20),
+          _EventSummary(event: latest, total: events.length),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: events.isEmpty ? null : () => _export(context, report),
-            icon: const Icon(Icons.save_alt_outlined),
+            icon: const Icon(Icons.ios_share_outlined),
             label: const Text('Redigierte Diagnose exportieren'),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 28),
           if (events.isEmpty)
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(20),
-                child: Text('Noch keine Diagnoseereignisse vorhanden.'),
+                child: Text('Noch keine Ereignisse vorhanden. Aktionen und Prüfungen erscheinen hier automatisch.'),
               ),
             ),
-          for (final event in events)
-            Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                leading: Icon(
-                  event.success
-                      ? Icons.check_circle_outline
-                      : Icons.error_outline,
-                  color: event.success
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.error,
+          for (final entry in events.indexed) ...[
+            if (entry.$1 == 0 || !_isSameDay(events[entry.$1 - 1].at, entry.$2.at))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8, top: 4),
+                child: Text(
+                  _formatDay(entry.$2.at),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                title: Text(event.action.name),
-                subtitle: Text('${event.at} · ${event.code}'),
-                trailing: Text('${event.duration.inMilliseconds} ms'),
               ),
-            ),
+            _EventRow(event: entry.$2),
+            const SizedBox(height: 8),
+          ],
         ],
       ),
     );
@@ -1785,6 +2072,154 @@ class DiagnosticsScreen extends ConsumerWidget {
       ).showSnackBar(const SnackBar(content: Text('Diagnose exportiert.')));
   }
 }
+
+class _EventSummary extends StatelessWidget {
+  const _EventSummary({required this.event, required this.total});
+  final DiagnosticEvent? event;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final current = event;
+    final success = current?.success ?? true;
+    final color = success ? scheme.primary : scheme.error;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withValues(alpha: .25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(color: color.withValues(alpha: .13), shape: BoxShape.circle),
+            child: Icon(success ? Icons.check_rounded : Icons.priority_high_rounded, color: color),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  current == null
+                      ? 'Noch keine Aktivität'
+                      : success
+                      ? 'Letzte Aktion erfolgreich'
+                      : 'Letzte Aktion braucht Aufmerksamkeit',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  current == null
+                      ? 'Starte eine Prüfung oder richte deinen Server ein.'
+                      : '${_eventActionLabel(current.action)} · ${_formatMoment(current.at)} · $total Einträge',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventRow extends StatelessWidget {
+  const _EventRow({required this.event});
+  final DiagnosticEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = event.success
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.error;
+    return Card(
+      child: ListTile(
+        leading: Icon(event.success ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded, color: color),
+        title: Text(_eventActionLabel(event.action)),
+        subtitle: Text('${event.success ? 'Erfolgreich' : 'Nicht erfolgreich'} · ${_formatMoment(event.at)}'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => _open(context, EventDetailScreen(event: event)),
+      ),
+    );
+  }
+}
+
+class EventDetailScreen extends StatelessWidget {
+  const EventDetailScreen({super.key, required this.event});
+  final DiagnosticEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final success = event.success;
+    final color = success ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.error;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Ereignisdetails')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Icon(success ? Icons.check_circle_rounded : Icons.error_rounded, color: color, size: 48),
+          const SizedBox(height: 16),
+          Text(_eventActionLabel(event.action), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(success ? 'Die Aktion wurde erfolgreich abgeschlossen.' : 'Die Aktion konnte nicht abgeschlossen werden.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 28),
+          _DetailRow(label: 'Zeitpunkt', value: _formatFullMoment(event.at)),
+          _DetailRow(label: 'Dauer', value: '${event.duration.inMilliseconds} ms'),
+          _DetailRow(label: 'Ergebnis', value: success ? 'Erfolgreich' : 'Nicht erfolgreich'),
+          _DetailRow(label: 'Technische Kennung', value: event.code),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 3),
+        SelectableText(value, style: Theme.of(context).textTheme.titleMedium),
+      ],
+    ),
+  );
+}
+
+bool _isSameDay(DateTime? a, DateTime b) => a != null && a.year == b.year && a.month == b.month && a.day == b.day;
+
+String _formatDay(DateTime date) {
+  final now = DateTime.now();
+  if (_isSameDay(now, date)) return 'Heute';
+  final yesterday = now.subtract(const Duration(days: 1));
+  if (_isSameDay(yesterday, date)) return 'Gestern';
+  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+}
+
+String _formatFullMoment(DateTime time) => '${_formatDay(time)}, ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
+
+String _eventActionLabel(DiagnosticAction action) => switch (action) {
+  DiagnosticAction.load => 'App-Status geladen',
+  DiagnosticAction.refresh => 'Serverstatus geprüft',
+  DiagnosticAction.wake => 'Startsignal gesendet',
+  DiagnosticAction.sshTest => 'SSH-Verbindung geprüft',
+  DiagnosticAction.shutdown => 'Herunterfahren angefordert',
+  DiagnosticAction.provisioning => 'Server vorbereitet',
+  DiagnosticAction.helperRemoval => 'Servergy-Helper entfernt',
+  DiagnosticAction.configuration => 'Einstellungen gespeichert',
+  DiagnosticAction.discovery => 'Server im Netzwerk gesucht',
+};
 
 class ServergyMark extends StatelessWidget {
   const ServergyMark({super.key});

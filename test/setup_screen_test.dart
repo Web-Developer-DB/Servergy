@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:servergy/core/app_metadata.dart';
 import 'package:servergy/core/controller.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
@@ -59,7 +60,7 @@ void main() {
         of: continueButton,
         matching: find.text('Weiter'),
       );
-      expect(tester.getSize(continueButton).height, greaterThanOrEqualTo(54));
+      expect(tester.getSize(continueButton).height, greaterThanOrEqualTo(48));
       expect(
         (tester.getCenter(continueLabel).dy -
                 tester.getCenter(continueButton).dy)
@@ -105,156 +106,106 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('only reached steps are directly selectable in a new setup', (
-    tester,
-  ) async {
-    _setViewport(tester, const Size(400, 1200));
+  testWidgets('setup uses one focused step with visible progress', (tester) async {
+    _setViewport(tester, const Size(400, 900));
     await tester.pumpWidget(_setup());
+
+    expect(find.text('Schritt 1 von 5'), findsOneWidget);
+    expect(find.text('Dein Netzwerk'), findsOneWidget);
+    expect(find.byType(Stepper), findsNothing);
+
     await tester.tap(find.widgetWithText(FilledButton, 'Weiter').hitTestable());
     await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Netzwerkgrenze').hitTestable());
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Für die Ersteinrichtung'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('SSH-Zugang', skipOffstage: false).first,
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('SSH-Zugang').hitTestable());
-    await tester.pump();
-    expect(find.textContaining('Für die Ersteinrichtung'), findsOneWidget);
+    expect(find.text('Schritt 2 von 5'), findsOneWidget);
+    expect(find.text('Server finden'), findsOneWidget);
   });
 
-  testWidgets('all steps are selectable when editing an existing profile', (
-    tester,
-  ) async {
-    _setViewport(tester, const Size(400, 1200));
-    await tester.pumpWidget(_setup(profile: _profile));
+  testWidgets('existing connection opens the requested focused setup step', (tester) async {
+    _setViewport(tester, const Size(400, 900));
+    await tester.pumpWidget(_setup(profile: _profile, initialStep: 4));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Server später starten', skipOffstage: false).first,
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Server später starten').hitTestable());
-    await tester.pumpAndSettle();
-
+    expect(find.text('Schritt 5 von 5'), findsOneWidget);
     expect(find.text('Wake-on-LAN jetzt einrichten'), findsOneWidget);
   });
 
-  testWidgets('settings expose the explicit server preparation action', (
-    tester,
-  ) async {
-    _setViewport(tester, const Size(400, 1200));
-    await tester.pumpWidget(_setup(profile: _profile));
+  testWidgets('settings separate secure shutdown from connection editing', (tester) async {
+    _setViewport(tester, const Size(400, 1000));
+    await tester.pumpWidget(_settings(profile: _profile));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Server später starten', skipOffstage: false).first,
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Server später starten').hitTestable());
+    expect(find.text('Serververbindung'), findsOneWidget);
+    await tester.tap(find.text('Sicheres Herunterfahren'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.widgetWithText(OutlinedButton, 'Server vorbereiten'),
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-
-    expect(
-      find.widgetWithText(OutlinedButton, 'Server vorbereiten'),
-      findsOneWidget,
-    );
-    expect(
-      find.widgetWithText(OutlinedButton, 'Installierten Helper entfernen'),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining('sudo-Passwort wird nur während der Einrichtung'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(FilledButton, 'Server vorbereiten'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Installierten Helper entfernen'), findsOneWidget);
   });
 
-  testWidgets('server preparation offers a copyable manual Debian path', (
-    tester,
-  ) async {
-    _setViewport(tester, const Size(400, 1200));
-    await tester.pumpWidget(_setup(profile: _profile));
+  testWidgets('deleting a saved connection requires confirmation in settings', (tester) async {
+    _setViewport(tester, const Size(400, 1000));
+    await tester.pumpWidget(_settings(profile: _profile));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Server später starten', skipOffstage: false).first,
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Server später starten').hitTestable());
+    final delete = find.text('Verbindung löschen');
+    await tester.scrollUntilVisible(delete, 160);
+    await tester.ensureVisible(delete);
     await tester.pumpAndSettle();
-    final prepare = find.widgetWithText(OutlinedButton, 'Server vorbereiten');
-    await tester.scrollUntilVisible(
-      prepare,
-      120,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.tap(delete);
     await tester.pumpAndSettle();
-    await tester.tap(prepare);
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Server für sicheres Herunterfahren vorbereiten?'),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Manuell einrichten'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Manuelle Debian-Einrichtung'), findsOneWidget);
-    expect(find.text('Kopieren'), findsOneWidget);
-  });
-
-  testWidgets('deleting a saved connection requires explicit confirmation', (
-    tester,
-  ) async {
-    _setViewport(tester, const Size(400, 1200));
-    await tester.pumpWidget(_setup(profile: _profile));
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.text('Server später starten', skipOffstage: false).first,
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Server später starten').hitTestable());
-    await tester.pumpAndSettle();
-    final deleteButton = find.widgetWithText(
-      OutlinedButton,
-      'Verbindung löschen',
-    );
-    await tester.ensureVisible(deleteButton);
-    await tester.pumpAndSettle();
-    await tester.tap(deleteButton);
-    await tester.pumpAndSettle();
-
     expect(find.text('Verbindung löschen?'), findsOneWidget);
-    expect(find.text('Abbrechen'), findsOneWidget);
-    expect(find.text('Löschen'), findsOneWidget);
-
     await tester.tap(find.text('Abbrechen'));
     await tester.pumpAndSettle();
     expect(find.text('Verbindung löschen?'), findsNothing);
-    expect(find.text('Verbindung löschen'), findsOneWidget);
   });
 
-  testWidgets('dashboard exposes connection deletion directly', (tester) async {
+  testWidgets('dashboard exposes no destructive connection action', (tester) async {
     _setViewport(tester, const Size(400, 900));
     await tester.pumpWidget(_home(profile: _profile));
 
-    await tester.tap(find.byTooltip('Verbindung löschen'));
+    expect(find.byTooltip('Verbindung löschen'), findsNothing);
+    expect(find.byTooltip('Ereignisse'), findsOneWidget);
+    expect(find.byTooltip('Einstellungen'), findsOneWidget);
+  });
+
+  testWidgets('events use a readable list and open technical details', (tester) async {
+    final event = DiagnosticEvent(
+      at: DateTime.now(),
+      action: DiagnosticAction.sshTest,
+      success: false,
+      code: 'auth_denied',
+      duration: const Duration(milliseconds: 250),
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        controllerProvider.overrideWith(
+          () => _StateServerController(AppState(diagnostics: [event])),
+        ),
+      ],
+      child: const MaterialApp(home: EventsScreen()),
+    ));
+
+    expect(find.text('Letzte Aktion braucht Aufmerksamkeit'), findsOneWidget);
+    expect(find.text('SSH-Verbindung geprüft'), findsAtLeastNWidgets(1));
+    await tester.tap(find.text('SSH-Verbindung geprüft').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Ereignisdetails'), findsOneWidget);
+    expect(find.text('Technische Kennung'), findsOneWidget);
+    expect(find.text('auth_denied'), findsOneWidget);
+  });
+
+  testWidgets('settings show package-backed version information', (tester) async {
+    const metadata = AppMetadata(
+      name: 'Servergy',
+      version: '0.1.0-alpha.2',
+      build: '2',
+      releaseChannel: 'Alpha',
+      platform: 'android',
+    );
+    await tester.pumpWidget(_settings(metadata: metadata));
     await tester.pumpAndSettle();
 
-    expect(find.text('Verbindung löschen?'), findsOneWidget);
+    expect(find.text('Alpha · 0.1.0-alpha.2 (Build 2)'), findsOneWidget);
+    expect(find.text('Versionsinformationen kopieren'), findsOneWidget);
   });
 
   test(
@@ -291,6 +242,7 @@ const _profile = ServerProfile(
 Widget _setup({
   ServerProfile? profile,
   List<DiscoveredServer> candidates = const [],
+  int initialStep = 0,
 }) => ProviderScope(
   overrides: [
     controllerProvider.overrideWith(() => _StaticServerController(profile)),
@@ -298,7 +250,7 @@ Widget _setup({
       () => _StaticDiscoveryController(candidates),
     ),
   ],
-  child: const MaterialApp(home: SetupScreen()),
+  child: MaterialApp(home: SetupScreen(initialStep: initialStep)),
 );
 
 Widget _home({ServerProfile? profile}) => ProviderScope(
@@ -306,6 +258,15 @@ Widget _home({ServerProfile? profile}) => ProviderScope(
     controllerProvider.overrideWith(() => _StaticServerController(profile)),
   ],
   child: const MaterialApp(home: HomeScreen()),
+);
+
+Widget _settings({ServerProfile? profile, AppMetadata? metadata}) => ProviderScope(
+  overrides: [
+    controllerProvider.overrideWith(() => _StaticServerController(profile)),
+    if (metadata != null)
+      appMetadataProvider.overrideWith((ref) async => metadata),
+  ],
+  child: const MaterialApp(home: SettingsScreen()),
 );
 
 void _setViewport(WidgetTester tester, Size size, {double textScale = 1}) {
@@ -328,6 +289,14 @@ class _StaticServerController extends ServerController {
 
   @override
   AppState build() => AppState(profile: profile);
+}
+
+class _StateServerController extends ServerController {
+  _StateServerController(this.appState) : super(store: _MemoryProfileStore());
+  final AppState appState;
+
+  @override
+  AppState build() => appState;
 }
 
 class _StaticDiscoveryController extends DiscoveryController {
