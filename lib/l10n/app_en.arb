@@ -1,0 +1,12 @@
+{
+  "@@locale": "en",
+  "appTitle": "Servergy",
+  "language": "Language",
+  "languageSystem": "System default",
+  "languageGerman": "Deutsch",
+  "languageEnglish": "English",
+  "languageSaveFailed": "The language could not be saved.",
+  "appearanceSaveFailed": "The appearance preference could not be saved.",
+  "documentLoadFailed": "This document could not be loaded.",
+  "supportInfoCopied": "Version information copied."
+}

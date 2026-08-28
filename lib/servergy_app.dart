@@ -7,14 +7,75 @@ import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'core/appearance.dart';
 import 'core/app_metadata.dart';
 import 'core/controller.dart';
+import 'core/language.dart';
 import 'core/models.dart';
+import 'l10n/app_strings.dart';
+import 'l10n/generated/app_localizations.dart';
+
+/// Keeps existing UI text localizable while migration to generated ARB
+/// accessors happens incrementally. It deliberately forwards Flutter's full
+/// text configuration so layout, semantics, and accessibility stay unchanged.
+class Text extends StatelessWidget {
+  const Text(
+    this.data, {
+    super.key,
+    this.style,
+    this.strutStyle,
+    this.textAlign,
+    this.textDirection,
+    this.locale,
+    this.softWrap,
+    this.overflow,
+    this.textScaler,
+    this.maxLines,
+    this.semanticsLabel,
+    this.textWidthBasis,
+    this.textHeightBehavior,
+    this.selectionColor,
+  });
+
+  final String data;
+  final TextStyle? style;
+  final StrutStyle? strutStyle;
+  final TextAlign? textAlign;
+  final TextDirection? textDirection;
+  final Locale? locale;
+  final bool? softWrap;
+  final TextOverflow? overflow;
+  final TextScaler? textScaler;
+  final int? maxLines;
+  final String? semanticsLabel;
+  final TextWidthBasis? textWidthBasis;
+  final TextHeightBehavior? textHeightBehavior;
+  final Color? selectionColor;
+
+  @override
+  Widget build(BuildContext context) => material.Text(
+    context.tr(data),
+    style: style,
+    strutStyle: strutStyle,
+    textAlign: textAlign,
+    textDirection: textDirection,
+    locale: locale,
+    softWrap: softWrap,
+    overflow: overflow,
+    textScaler: textScaler,
+    maxLines: maxLines,
+    semanticsLabel: semanticsLabel == null ? null : context.tr(semanticsLabel!),
+    textWidthBasis: textWidthBasis,
+    textHeightBehavior: textHeightBehavior,
+    selectionColor: selectionColor,
+  );
+}
 
 class ServergyApp extends ConsumerWidget {
   const ServergyApp({super.key});
@@ -22,16 +83,26 @@ class ServergyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appearance = ref.watch(appearanceProvider);
+    final language = ref.watch(languageProvider);
     return MaterialApp(
       title: 'Servergy',
       debugShowCheckedModeBanner: false,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
       themeMode: _themeMode(appearance.preference),
+      locale: language.preference.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localeResolutionCallback: resolveServergyLocale,
       home: const HomeScreen(),
     );
   }
 }
+
+Locale resolveServergyLocale(Locale? locale, Iterable<Locale> supported) =>
+    locale?.languageCode.toLowerCase() == 'de'
+    ? const Locale('de')
+    : const Locale('en');
 
 ThemeMode _themeMode(AppearancePreference preference) => switch (preference) {
   AppearancePreference.system => ThemeMode.system,
@@ -154,12 +225,12 @@ class HomeScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Ereignisse',
+            tooltip: context.tr('Ereignisse'),
             onPressed: () => _open(context, const EventsScreen()),
             icon: const Icon(Icons.receipt_long_outlined),
           ),
           IconButton(
-            tooltip: 'Einstellungen',
+            tooltip: context.tr('Einstellungen'),
             onPressed: () => _open(context, const SettingsScreen()),
             icon: const Icon(Icons.settings_outlined),
           ),
@@ -299,7 +370,7 @@ class _StatusCard extends ConsumerWidget {
                     ),
                   ),
                   IconButton.filledTonal(
-                    tooltip: 'Status aktualisieren',
+                    tooltip: context.tr('Status aktualisieren'),
                     onPressed: state.busy
                         ? null
                         : ref.read(controllerProvider.notifier).refresh,
@@ -313,7 +384,7 @@ class _StatusCard extends ConsumerWidget {
               Text(
                 lastCheck == null
                     ? 'Noch nicht geprüft'
-                    : 'Zuletzt geprüft: ${_formatMoment(lastCheck.at)}',
+                    : 'Zuletzt geprüft: ${_formatMoment(context, lastCheck.at)}',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -510,15 +581,15 @@ DiagnosticEvent? _lastRelevantEvent(List<DiagnosticEvent> events) {
   return matching.isEmpty ? null : matching.last;
 }
 
-String _formatMoment(DateTime time) {
+String _formatMoment(BuildContext context, DateTime time) {
+  final locale = Localizations.localeOf(context).toLanguageTag();
   final now = DateTime.now();
   final sameDay =
       now.year == time.year && now.month == time.month && now.day == time.day;
-  final hour = time.hour.toString().padLeft(2, '0');
-  final minute = time.minute.toString().padLeft(2, '0');
+  final clock = DateFormat.Hm(locale).format(time);
   return sameDay
-      ? 'heute, $hour:$minute'
-      : '${time.day.toString().padLeft(2, '0')}.${time.month.toString().padLeft(2, '0')}.$hour:$minute';
+      ? '${context.tr('Heute').toLowerCase()}, $clock'
+      : '${DateFormat.MMMd(locale).format(time)}, $clock';
 }
 
 Future<void> _confirmShutdown(
@@ -710,7 +781,7 @@ Future<void> _showManualPoweroffSetup(BuildContext context) async {
         width: 520,
         child: SingleChildScrollView(
           child: SelectableText(
-            'Führe diesen festen Ablauf an der Serverkonsole aus. Ersetze ausschließlich SSH-BENUTZER; gib keine eigenen Befehle in Servergy ein.\n\n$_manualPoweroffSetup',
+            '${context.tr('Führe diesen festen Ablauf an der Serverkonsole aus. Ersetze ausschließlich SSH-BENUTZER; gib keine eigenen Befehle in Servergy ein.')}\n\n$_manualPoweroffSetup',
             style: Theme.of(
               dialog,
             ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
@@ -748,7 +819,7 @@ Future<bool> _confirmTrust(BuildContext context, String fingerprint) async =>
       builder: (dialog) => AlertDialog(
         title: const Text('SSH-Server bestätigen'),
         content: SelectableText(
-          'Fingerprint:\n\n$fingerprint\n\nVergleiche ihn mit dem Homeserver, bevor du vertraust.',
+          'Fingerprint:\n\n$fingerprint\n\n${context.tr('Vergleiche ihn mit dem Homeserver, bevor du vertraust.')}',
         ),
         actions: [
           TextButton(
@@ -784,7 +855,7 @@ Future<SshCredentials?> _askCredentials(
         obscureText: true,
         enableSuggestions: false,
         autocorrect: false,
-        decoration: const InputDecoration(labelText: 'Geheimnis'),
+        decoration: InputDecoration(labelText: context.tr('Geheimnis')),
       ),
       actions: [
         TextButton(
@@ -821,9 +892,11 @@ Future<String?> _askSudoPassword(BuildContext context) async {
         autocorrect: false,
         textInputAction: TextInputAction.done,
         onSubmitted: (value) => Navigator.pop(dialog, value),
-        decoration: const InputDecoration(
-          labelText: 'sudo-Passwort',
-          helperText: 'Wird nur für diese Servervorbereitung verwendet.',
+        decoration: InputDecoration(
+          labelText: context.tr('sudo-Passwort'),
+          helperText: context.tr(
+            'Wird nur für diese Servervorbereitung verwendet.',
+          ),
         ),
       ),
       actions: [
@@ -855,8 +928,17 @@ class SettingsScreen extends ConsumerWidget {
       ).showSnackBar(SnackBar(content: Text(error)));
       ref.read(appearanceProvider.notifier).clearError();
     });
+    ref.listen<LanguageState>(languageProvider, (_, next) {
+      final error = next.error;
+      if (error == null || !context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      ref.read(languageProvider.notifier).clearError();
+    });
     final state = ref.watch(controllerProvider);
     final appearance = ref.watch(appearanceProvider);
+    final language = ref.watch(languageProvider);
     final profile = state.profile;
     final controller = ref.read(controllerProvider.notifier);
     return Scaffold(
@@ -879,6 +961,20 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: Text(_appearanceLabel(appearance.preference)),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _showAppearancePicker(context, ref),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _SettingsGroup(
+            title: 'Sprache',
+            children: [
+              ListTile(
+                key: const ValueKey('language-setting'),
+                leading: const Icon(Icons.language_outlined),
+                title: const Text('Sprache'),
+                subtitle: Text(_languageLabel(language.preference)),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showLanguagePicker(context, ref),
               ),
             ],
           ),
@@ -1054,6 +1150,42 @@ Future<void> _showAppearancePicker(BuildContext context, WidgetRef ref) async {
   await ref.read(appearanceProvider.notifier).select(selected);
 }
 
+String _languageLabel(LanguagePreference preference) => switch (preference) {
+  LanguagePreference.system => 'Systemstandard',
+  LanguagePreference.german => 'Deutsch',
+  LanguagePreference.english => 'English',
+};
+
+Future<void> _showLanguagePicker(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(languageProvider).preference;
+  final selected = await showDialog<LanguagePreference>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: const Text('Sprache'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final preference in LanguagePreference.values)
+              RadioListTile<LanguagePreference>(
+                value: preference,
+                groupValue: current,
+                selected: preference == current,
+                secondary: const Icon(Icons.language_outlined),
+                title: Text(_languageLabel(preference)),
+                onChanged: (value) {
+                  if (value != null) Navigator.pop(dialog, value);
+                },
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (selected == null || !context.mounted) return;
+  await ref.read(languageProvider.notifier).select(selected);
+}
+
 final _feedbackUri = Uri.parse(
   'https://github.com/Web-Developer-DB/Servergy/issues/new/choose',
 );
@@ -1161,6 +1293,7 @@ class _AboutServergySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final metadata = ref.watch(appMetadataProvider);
+    final english = Localizations.localeOf(context).languageCode != 'de';
     return _SettingsGroup(
       title: 'Über Servergy',
       children: [
@@ -1170,7 +1303,7 @@ class _AboutServergySection extends ConsumerWidget {
           subtitle: Text(
             metadata.when(
               data: (value) =>
-                  '${value.releaseChannel} · ${value.versionLabel}',
+                  '${context.tr(value.releaseChannel)} · ${value.versionLabel}',
               loading: () => 'Produktinformationen werden geladen',
               error: (_, _) => 'Produktinformationen nicht verfügbar',
             ),
@@ -1189,9 +1322,9 @@ class _AboutServergySection extends ConsumerWidget {
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => _open(
             context,
-            const DocumentScreen(
+            DocumentScreen(
               title: 'Datenschutz',
-              asset: 'docs/privacy.md',
+              asset: english ? 'docs/privacy.en.md' : 'docs/privacy.md',
             ),
           ),
         ),
@@ -1202,9 +1335,11 @@ class _AboutServergySection extends ConsumerWidget {
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => _open(
             context,
-            const DocumentScreen(
+            DocumentScreen(
               title: 'Serveranleitung',
-              asset: 'docs/server-setup.md',
+              asset: english
+                  ? 'docs/server-setup.en.md'
+                  : 'docs/server-setup.md',
             ),
           ),
         ),
@@ -1213,7 +1348,9 @@ class _AboutServergySection extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: OutlinedButton.icon(
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: value.supportText));
+                await Clipboard.setData(
+                  ClipboardData(text: _localizedSupportText(context, value)),
+                );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1231,6 +1368,13 @@ class _AboutServergySection extends ConsumerWidget {
       ],
     );
   }
+}
+
+String _localizedSupportText(BuildContext context, AppMetadata value) {
+  final english = Localizations.localeOf(context).languageCode != 'de';
+  return english
+      ? '${value.name}\nVersion: ${value.version}\nBuild: ${value.build}\nChannel: ${context.tr(value.releaseChannel)}\nPlatform: ${value.platform}'
+      : value.supportText;
 }
 
 class DocumentScreen extends StatelessWidget {
@@ -1507,7 +1651,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   void _goToStep(int target) {
     if (!_isStepUnlocked(target)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
             'Dieser Schritt wird nach dem vorherigen Schritt freigeschaltet.',
           ),
@@ -1573,7 +1717,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           'SSH-Passwort',
           Icons.password_outlined,
           obscureText: true,
-          helperText: 'Leer: vorhandenes gespeichertes Passwort beibehalten.',
+          helperText: context.tr(
+            'Leer: vorhandenes gespeichertes Passwort beibehalten.',
+          ),
           onChanged: _markConnectionUnverified,
         ),
     ],
@@ -1610,10 +1756,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               children: [
                 const Text('Automatisch erkannt'),
                 const SizedBox(height: 6),
-                Text('Netzwerkadapter: ${candidate.interfaceName}'),
-                Text('MAC-Adresse: ${candidate.settings.mac}'),
-                Text('Broadcast: ${candidate.settings.broadcast}'),
-                Text('UDP-Port: ${candidate.settings.port}'),
+                Text(
+                  '${context.tr('Netzwerkadapter')}: ${candidate.interfaceName}',
+                ),
+                Text('${context.tr('MAC-Adresse')}: ${candidate.settings.mac}'),
+                Text(
+                  '${context.tr('Broadcast')}: ${candidate.settings.broadcast}',
+                ),
+                Text('${context.tr('UDP-Port')}: ${candidate.settings.port}'),
               ],
             ),
           ),
@@ -1676,7 +1826,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           leading: const Icon(Icons.check_circle_outline_rounded),
           title: const Text('Serveradresse übernommen'),
           subtitle: Text(
-            '${candidate.host}:${candidate.port} · Ergänze jetzt den SSH-Benutzernamen.',
+            context.usesEnglish
+                ? '${candidate.host}:${candidate.port} · Now add the SSH username.'
+                : '${candidate.host}:${candidate.port} · Ergänze jetzt den SSH-Benutzernamen.',
           ),
           trailing: TextButton(
             onPressed: () => setState(() {
@@ -1777,7 +1929,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       container: true,
       liveRegion: selected,
       label: selected
-          ? 'Serveradresse und SSH-Port wurden übernommen.'
+          ? context.tr('Serveradresse und SSH-Port wurden übernommen.')
+          : context.usesEnglish
+          ? 'Found possible SSH server ${candidate.host} on port ${candidate.port}.'
           : 'Gefundener möglicher SSH-Server ${candidate.host} auf Port ${candidate.port}.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1825,9 +1979,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Serveradresse und SSH-Port wurden übernommen. Ergänze jetzt den SSH-Benutzernamen.',
+            context.usesEnglish
+                ? 'Server address and SSH port were applied. Now add the SSH username.'
+                : 'Serveradresse und SSH-Port wurden übernommen. Ergänze jetzt den SSH-Benutzernamen.',
           ),
         ),
       );
@@ -1849,7 +2005,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
     child: Semantics(
       container: true,
-      label: label,
+      label: context.tr(label),
       child: Container(
         key: containerKey ?? ValueKey('field-container-$label'),
         decoration: BoxDecoration(
@@ -1901,7 +2057,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                           _ => true,
                         };
                         return required && (v == null || v.trim().isEmpty)
-                            ? '$label ist erforderlich.'
+                            ? _requiredFieldLabel(context, label)
                             : null;
                       },
                       decoration: const InputDecoration(
@@ -2144,7 +2300,9 @@ class _SetupProgress extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Schritt ${step + 1} von ${_labels.length}',
+          context.usesEnglish
+              ? 'Step ${step + 1} of ${_labels.length}'
+              : 'Schritt ${step + 1} von ${_labels.length}',
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 8),
@@ -2180,6 +2338,11 @@ class _SetupProgress extends StatelessWidget {
     ),
   );
 }
+
+String _requiredFieldLabel(BuildContext context, String label) =>
+    context.usesEnglish
+    ? '${context.tr(label)} is required.'
+    : '$label ist erforderlich.';
 
 Future<bool> _confirmConnectionDeletion(BuildContext context) async =>
     await showDialog<bool>(
@@ -2263,7 +2426,7 @@ class EventsScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8, top: 4),
                 child: Text(
-                  _formatDay(entry.$2.at),
+                  _formatDay(context, entry.$2.at),
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -2340,7 +2503,7 @@ class _EventSummary extends StatelessWidget {
                 Text(
                   current == null
                       ? 'Starte eine Prüfung oder richte deinen Server ein.'
-                      : '${_eventActionLabel(current.action)} · ${_formatMoment(current.at)} · $total Einträge',
+                      : '${_eventActionLabel(context, current.action)} · ${_formatMoment(context, current.at)} · ${_eventCount(context, total)}',
                   style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
               ],
@@ -2369,9 +2532,9 @@ class _EventRow extends StatelessWidget {
               : Icons.error_outline_rounded,
           color: color,
         ),
-        title: Text(_eventActionLabel(event.action)),
+        title: Text(_eventActionLabel(context, event.action)),
         subtitle: Text(
-          '${event.success ? 'Erfolgreich' : 'Nicht erfolgreich'} · ${_formatMoment(event.at)}',
+          '${context.tr(event.success ? 'Erfolgreich' : 'Nicht erfolgreich')} · ${_formatMoment(context, event.at)}',
         ),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => _open(context, EventDetailScreen(event: event)),
@@ -2402,7 +2565,7 @@ class EventDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            _eventActionLabel(event.action),
+            _eventActionLabel(context, event.action),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -2417,14 +2580,17 @@ class EventDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          _DetailRow(label: 'Zeitpunkt', value: _formatFullMoment(event.at)),
+          _DetailRow(
+            label: 'Zeitpunkt',
+            value: _formatFullMoment(context, event.at),
+          ),
           _DetailRow(
             label: 'Dauer',
             value: '${event.duration.inMilliseconds} ms',
           ),
           _DetailRow(
             label: 'Ergebnis',
-            value: success ? 'Erfolgreich' : 'Nicht erfolgreich',
+            value: context.tr(success ? 'Erfolgreich' : 'Nicht erfolgreich'),
           ),
           _DetailRow(label: 'Technische Kennung', value: event.code),
         ],
@@ -2460,28 +2626,37 @@ class _DetailRow extends StatelessWidget {
 bool _isSameDay(DateTime? a, DateTime b) =>
     a != null && a.year == b.year && a.month == b.month && a.day == b.day;
 
-String _formatDay(DateTime date) {
+String _formatDay(BuildContext context, DateTime date) {
+  final locale = Localizations.localeOf(context).toLanguageTag();
   final now = DateTime.now();
-  if (_isSameDay(now, date)) return 'Heute';
+  if (_isSameDay(now, date)) return context.tr('Heute');
   final yesterday = now.subtract(const Duration(days: 1));
-  if (_isSameDay(yesterday, date)) return 'Gestern';
-  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  if (_isSameDay(yesterday, date)) return context.tr('Gestern');
+  return DateFormat.yMMMd(locale).format(date);
 }
 
-String _formatFullMoment(DateTime time) =>
-    '${_formatDay(time)}, ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
+String _formatFullMoment(BuildContext context, DateTime time) {
+  final locale = Localizations.localeOf(context).toLanguageTag();
+  return '${_formatDay(context, time)}, ${DateFormat.Hms(locale).format(time)}';
+}
 
-String _eventActionLabel(DiagnosticAction action) => switch (action) {
-  DiagnosticAction.load => 'App-Status geladen',
-  DiagnosticAction.refresh => 'Serverstatus geprüft',
-  DiagnosticAction.wake => 'Startsignal gesendet',
-  DiagnosticAction.sshTest => 'SSH-Verbindung geprüft',
-  DiagnosticAction.shutdown => 'Herunterfahren angefordert',
-  DiagnosticAction.provisioning => 'Server vorbereitet',
-  DiagnosticAction.helperRemoval => 'Servergy-Helper entfernt',
-  DiagnosticAction.configuration => 'Einstellungen gespeichert',
-  DiagnosticAction.discovery => 'Server im Netzwerk gesucht',
-};
+String _eventCount(BuildContext context, int value) =>
+    Localizations.localeOf(context).languageCode == 'de'
+    ? '$value Einträge'
+    : '$value ${value == 1 ? 'entry' : 'entries'}';
+
+String _eventActionLabel(BuildContext context, DiagnosticAction action) =>
+    context.tr(switch (action) {
+      DiagnosticAction.load => 'App-Status geladen',
+      DiagnosticAction.refresh => 'Serverstatus geprüft',
+      DiagnosticAction.wake => 'Startsignal gesendet',
+      DiagnosticAction.sshTest => 'SSH-Verbindung geprüft',
+      DiagnosticAction.shutdown => 'Herunterfahren angefordert',
+      DiagnosticAction.provisioning => 'Server vorbereitet',
+      DiagnosticAction.helperRemoval => 'Servergy-Helper entfernt',
+      DiagnosticAction.configuration => 'Einstellungen gespeichert',
+      DiagnosticAction.discovery => 'Server im Netzwerk gesucht',
+    });
 
 class ServergyMark extends StatelessWidget {
   const ServergyMark({super.key, this.size = 34});

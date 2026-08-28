@@ -27,12 +27,24 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
 /dist/
+
+# Generated localization bindings. Recreate them with `flutter gen-l10n`.
+/lib/l10n/generated/
+
+# Local environment and code-signing material. Release credentials belong in
+# the CI secret store and must never be committed with the application source.
+.env
+.env.*
+!.env.example
+**/*.p12
+**/*.pfx
 
 # Symbolication related
 app.*.symbols

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:servergy/core/appearance.dart';
 import 'package:servergy/core/app_metadata.dart';
 import 'package:servergy/core/controller.dart';
+import 'package:servergy/core/language.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
 import 'package:servergy/servergy_app.dart';
@@ -162,7 +163,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('appearance-setting')), findsOneWidget);
-    expect(find.text('Systemstandard'), findsOneWidget);
+    expect(find.text('Systemstandard'), findsAtLeastNWidgets(2));
 
     await tester.tap(find.byKey(const ValueKey('appearance-setting')));
     await tester.pumpAndSettle();
@@ -175,6 +176,24 @@ void main() {
     expect(find.text('Dunkel'), findsOneWidget);
   });
 
+  testWidgets('settings expose the persistent language choices', (
+    tester,
+  ) async {
+    final languageStore = _MemoryLanguageStore();
+    await tester.pumpWidget(_settings(languageStore: languageStore));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('language-setting')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('language-setting')));
+    await tester.pumpAndSettle();
+    expect(find.text('Deutsch'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+
+    await tester.tap(find.text('English'));
+    await tester.pumpAndSettle();
+    expect(languageStore.saved, LanguagePreference.english);
+  });
+
   testWidgets('root applies the selected appearance mode to MaterialApp', (
     tester,
   ) async {
@@ -183,6 +202,9 @@ void main() {
         overrides: [
           appearanceProvider.overrideWith(
             () => _StaticAppearanceController(AppearancePreference.dark),
+          ),
+          languageProvider.overrideWith(
+            () => _StaticLanguageController(LanguagePreference.german),
           ),
           controllerProvider.overrideWith(() => _StaticServerController(null)),
         ],
@@ -206,6 +228,9 @@ void main() {
             () => _StaticAppearanceController(AppearancePreference.system),
           ),
           appearanceStoreProvider.overrideWithValue(appearanceStore),
+          languageProvider.overrideWith(
+            () => _StaticLanguageController(LanguagePreference.german),
+          ),
           controllerProvider.overrideWith(() => _StaticServerController(null)),
         ],
         child: const ServergyApp(),
@@ -223,6 +248,70 @@ void main() {
     final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(materialApp.themeMode, ThemeMode.dark);
     expect(appearanceStore.saved, AppearancePreference.dark);
+  });
+
+  testWidgets('changing language immediately rebuilds the app locale', (
+    tester,
+  ) async {
+    final languageStore = _MemoryLanguageStore();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appearanceProvider.overrideWith(
+            () => _StaticAppearanceController(AppearancePreference.system),
+          ),
+          languageStoreProvider.overrideWithValue(languageStore),
+          controllerProvider.overrideWith(() => _StaticServerController(null)),
+        ],
+        child: const ServergyApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Settings'), findsOneWidget);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('language-setting')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Deutsch'));
+    await tester.pumpAndSettle();
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(materialApp.locale, const Locale('de'));
+    expect(languageStore.saved, LanguagePreference.german);
+    expect(find.text('Einstellungen'), findsOneWidget);
+  });
+
+  testWidgets('English settings open the English privacy document', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appearanceProvider.overrideWith(
+            () => _StaticAppearanceController(AppearancePreference.system),
+          ),
+          languageStoreProvider.overrideWithValue(_MemoryLanguageStore()),
+          controllerProvider.overrideWith(() => _StaticServerController(null)),
+        ],
+        child: const ServergyApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    final privacy = find.widgetWithText(ListTile, 'Privacy');
+    await tester.scrollUntilVisible(privacy, 160);
+    await tester.ensureVisible(privacy);
+    await tester.pumpAndSettle();
+    await tester.tap(privacy.hitTestable());
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Servergy works without a cloud service'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('deleting a saved connection requires confirmation in settings', (
@@ -382,11 +471,15 @@ Widget _settings({
   ServerProfile? profile,
   AppMetadata? metadata,
   AppearanceStore? appearanceStore,
+  LanguageStore? languageStore,
 }) => ProviderScope(
   overrides: [
     controllerProvider.overrideWith(() => _StaticServerController(profile)),
     appearanceStoreProvider.overrideWithValue(
       appearanceStore ?? _MemoryAppearanceStore(),
+    ),
+    languageStoreProvider.overrideWithValue(
+      languageStore ?? _MemoryLanguageStore(),
     ),
     if (metadata != null)
       appMetadataProvider.overrideWithValue(AsyncData(metadata)),
@@ -432,6 +525,15 @@ class _StaticAppearanceController extends AppearanceController {
   @override
   AppearanceState build() =>
       AppearanceState(preference: preference, loaded: true);
+}
+
+class _StaticLanguageController extends LanguageController {
+  _StaticLanguageController(this.preference);
+
+  final LanguagePreference preference;
+
+  @override
+  LanguageState build() => LanguageState(preference: preference, loaded: true);
 }
 
 class _StaticDiscoveryController extends DiscoveryController {
@@ -501,6 +603,22 @@ class _MemoryAppearanceStore implements AppearanceStore {
 
   @override
   Future<void> save(AppearancePreference value) async {
+    saved = value;
+    preference = value;
+  }
+}
+
+class _MemoryLanguageStore implements LanguageStore {
+  _MemoryLanguageStore() : preference = LanguagePreference.system;
+
+  LanguagePreference preference;
+  LanguagePreference? saved;
+
+  @override
+  Future<LanguagePreference> load() async => preference;
+
+  @override
+  Future<void> save(LanguagePreference value) async {
     saved = value;
     preference = value;
   }
