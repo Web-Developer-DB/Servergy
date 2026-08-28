@@ -1,7 +1,7 @@
 # Release-Checkliste
 
 - [ ] Paketversion `X.Y.Z+BUILD` und Git-Tag `vX.Y.Z` stimmen überein; für
-      Servergy 0.1.0 ist die Paketversion `0.1.0+5`.
+      Servergy 0.1.0 ist die Paketversion `0.1.0+6`.
 - [ ] `flutter analyze` und `flutter test` sind erfolgreich.
 - [ ] Android-, Linux- und Windows-Release-Build erfolgreich erstellt; der
       Launchername und das Servergy-Icon sind auf jeder Plattform sichtbar.
