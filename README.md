@@ -9,6 +9,17 @@
   Eine lokale Flutter-App für Wake-on-LAN und kontrollierte SSH-Steuerung.
 </p>
 
+Servergy wurde für gelegentlich genutzte Homeserver entwickelt: Im lokalen
+Netzwerk lässt sich der Server mit wenigen Schritten starten, sein aktueller
+Zustand prüfen und anschließend sicher wieder herunterfahren. So entsteht eine
+praktische Lösung für den Alltag, ohne dass der Homeserver dauerhaft laufen
+oder über eine umfangreiche Verwaltungsoberfläche betreut werden muss.
+
+<p align="center">
+  <strong>🇩🇪 Deutsch</strong> ·
+  <a href="README.en.md">🇬🇧 English</a>
+</p>
+
 <p align="center">
   <a href="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml">
     <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=Dev" alt="Qualitätsprüfung" />

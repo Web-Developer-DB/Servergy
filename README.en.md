@@ -1,0 +1,283 @@
+<p align="center">
+  <img src="assets/branding/servergy-icon.png" width="128" alt="Servergy – home server control" />
+</p>
+
+<h1 align="center">Servergy</h1>
+
+<p align="center">
+  <strong>Your home server. Securely reachable. Easy to control.</strong><br />
+  A local Flutter app for Wake-on-LAN and controlled SSH power management.
+</p>
+
+Servergy is designed for home servers that are used occasionally: on your
+local network, you can start the server in a few steps, check its current
+status, and safely shut it down again when you are done. This keeps everyday
+server use practical without requiring the home server to run permanently or
+be managed through a complex administration interface.
+
+<p align="center">
+  <a href="README.md">🇩🇪 Deutsch</a> ·
+  <strong>🇬🇧 English</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml">
+    <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=Dev" alt="Quality checks" />
+  </a>
+  <a href="docs/release-readiness.md">
+    <img src="https://img.shields.io/badge/Status-Stable-0B7A43?style=flat-square" alt="Status: Stable" />
+  </a>
+  <a href="https://github.com/Web-Developer-DB/Servergy/releases">
+    <img src="https://img.shields.io/badge/Version-0.1.0-0F4C81?style=flat-square" alt="Version 0.1.0" />
+  </a>
+  <a href="docs/privacy.md">
+    <img src="https://img.shields.io/badge/Privacy-local%20%26%20no%20telemetry-0B7A43?style=flat-square" alt="Local data processing without telemetry" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-5B21B6?style=flat-square" alt="MIT license" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="#-overview">Overview</a> ·
+  <a href="#-getting-started">Getting started</a> ·
+  <a href="#-security-by-default">Security</a> ·
+  <a href="#-quality-and-release">Quality &amp; release</a> ·
+  <a href="#-documentation">Documentation</a>
+</p>
+
+> [!IMPORTANT]
+> **Servergy 0.1.0 is the first stable release.** The app is intended for
+> your own home server. Before publishing a build, complete the real-device
+> tests, signatures, and release criteria documented in
+> [docs/release-readiness.md](docs/release-readiness.md).
+
+## ✨ Overview
+
+|  | What Servergy means |
+| --- | --- |
+| 🏠 **A clear focus** | A local app for **one** home server — no cloud account and no complicated server administration. |
+| 🔐 **Secure control** | SSH access, host-key verification, and a narrow, fixed shutdown helper instead of arbitrary shell commands. |
+| ⚡ **Start again** | Wake-on-LAN with a status check when your server is switched off. |
+| 🧭 **Guided setup** | A focused assistant walks you through network, server, SSH, connection verification, and optional Wake-on-LAN. |
+| 🕶️ **Stay private** | No cloud, telemetry, tracking, or background service. All data stays on your device. |
+
+Servergy only performs actions that you explicitly trigger. The app stays in
+the foreground and connects only to the home server you configure.
+
+## 🧩 Features
+
+| Area | What Servergy does | Your benefit |
+| --- | --- | --- |
+| 🔎 **Find a server** | Optionally searches mDNS announcements and briefly checks possible SSH targets on the local IPv4 network; a host or IP can always be entered manually. | A faster start on a home network while keeping full control for VPNs or fixed addresses. |
+| 🔑 **SSH access** | Supports password authentication as well as OpenSSH, RSA, and EC keys; encrypted keys request their passphrase only for the current action. | Credentials are not unnecessarily entered or displayed again. |
+| 🪪 **Host-key protection** | The SHA-256 fingerprint is consciously confirmed on first contact. A changed key blocks further actions. | Protection against a target being replaced accidentally or maliciously. |
+| ⚡ **Wake-on-LAN** | Sends Wake-on-LAN and then checks whether the SSH port becomes reachable again. | A switched-off server can be started conveniently. |
+| ⏻ **Safe shutdown** | Uses a restricted, root-owned Servergy helper with a fixed systemd unit. | No general-purpose `sudo` and no freely chosen remote commands. |
+| 🧾 **Events** | Keeps a bounded, local, redacted activity log. | Useful diagnostics without profile or network data in the export. |
+| 🎨 **Platform-ready** | System default plus light or dark Material 3 appearance, large interaction targets, and native launcher and start-menu icons. | A calm, understandable experience on Android, Linux, and Windows. |
+
+### 🎨 Brand and app icons
+
+The Servergy symbol combines the home server with its two clear actions: green
+means starting or reachable, while blue means a safe shutdown. The wordmark is
+used for GitHub, the website, and window titles; launchers use the square icon
+without text.
+
+| Platform | Delivered as | Variants |
+| --- | --- | --- |
+| 🤖 Android | Adaptive launcher resource | Full color, foreground, and monochrome for modern launchers |
+| 🪟 Windows | `app_icon.ico` | Multi-size icon up to 256 px for windows and the Start menu |
+| 🐧 Ubuntu/Linux | Hicolor theme | PNGs from 16 to 512 px plus a scalable SVG |
+
+All variants are reproducibly generated from the approved source with
+[`tool/generate_launcher_icons.dart`](tool/generate_launcher_icons.dart).
+
+## 🗺️ How it works
+
+| Step | In the app | Security decision |
+| :---: | --- | --- |
+| `1` | 🌐 **Understand the network boundary** | Servergy explains when a home network or VPN is appropriate. |
+| `2` | 🔎 **Find or enter the server** | A discovery result is only a candidate — not yet a trusted server. |
+| `3` | 🔑 **Choose SSH access** | Keys are preferred; passwords remain in the operating system’s secure storage. |
+| `4` | 🪪 **Verify connection and host key** | New credentials are stored only after a successful SSH test. |
+| `5` | ⚡ **Add Wake-on-LAN** | MAC and broadcast data can be checked, saved, or added later. |
+
+After setup, the home screen becomes a dashboard: reachability, the last check,
+and the appropriate next action are prominent; technical details remain
+available in Events and Settings.
+
+## 🚀 Getting started
+
+### For users
+
+Release artifacts are published as signed GitHub releases with SHA-256
+checksums. Always read the release notes and verify the checksum before
+installing an artifact.
+
+| Platform | Release artifact | Start |
+| --- | --- | --- |
+| 🤖 **Android 12+** | Signed APK | Install the APK from the GitHub release and consciously grant local-network access if requested. |
+| 🐧 **Linux** | User bundle (`.tar.gz`) | Extract the archive, run `./install-linux.sh`, then start Servergy from the application menu. The installation stays under `~/.local/share/servergy`. |
+| 🪟 **Windows 11** | Signed ZIP | Extract the ZIP, verify the Windows signature, and start `servergy.exe`. |
+
+> [!NOTE]
+> A real Wake-on-LAN test requires a suitable home network. Android emulators
+> and VPN connections do not replace a broadcast test on the local network.
+
+### For your home server
+
+1. Enable Wake-on-LAN in the BIOS/UEFI, operating system, and — if required —
+   your network equipment.
+2. Create a dedicated SSH user and use a private key whenever possible.
+3. Compare the host-key fingerprint directly on the server before confirming
+   it in the app.
+4. Set up the restricted shutdown helper through **Settings → Safe shutdown →
+   Prepare server** or by following the guide.
+
+The complete, secure Debian/Ubuntu setup with systemd is documented in
+[docs/server-setup.md](docs/server-setup.md).
+
+<details>
+<summary><strong>Start development locally</strong></summary>
+
+<br />
+
+**Prerequisites**
+
+- Flutter/Dart matching `pubspec.yaml`
+- Android Studio/JDK for Android builds
+- on Linux: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`,
+  `libsecret-1-dev`, and `libsecret-1-0`
+- an Android device/emulator, Linux desktop, or Windows development machine
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+```
+
+**Platform builds**
+
+```bash
+flutter build apk --debug
+flutter build linux --debug
+flutter build windows --debug
+```
+
+The complete development, emulator, and real-device guide is available in
+[docs/development.md](docs/development.md).
+
+</details>
+
+## 🛡️ Security by default
+
+Servergy is designed to be convenient while deliberately keeping home-server
+access narrow.
+
+| Protection | How Servergy implements it |
+| --- | --- |
+| **No cloud** | Servergy does not send profile, diagnostic, or usage data to a backend service. |
+| **Separate data stores** | Non-secret profile data is kept in app preferences; passwords, private keys, and confirmed host keys are kept in the operating system’s secure storage. |
+| **No password fallback** | Switching to key authentication removes a stored password. An empty password field deliberately means “keep the existing value”. |
+| **Fingerprints instead of names** | Trust is tied to host and port. A changed key must be checked outside the app. |
+| **No remote terminal** | The app provides no input for arbitrary remote commands. |
+| **Narrow shutdown path** | The app calls only `sudo -n /usr/local/sbin/servergy-poweroff`. The helper starts only the fixed systemd unit. |
+| **Redacted diagnostics** | The export contains time, action, result, error code, and duration — never passwords, keys, usernames, complete host addresses, or MAC addresses. |
+
+### The shutdown helper at a glance
+
+The optional server setup manages only these files:
+
+| Server file | Owner & permissions | Purpose |
+| --- | --- | --- |
+| `/usr/local/sbin/servergy-poweroff` | `root:root` · `0755` | Argument-free helper; confirms the request and starts only the Servergy systemd unit. |
+| `/etc/systemd/system/servergy-poweroff.service` | `root:root` · `0644` | Oneshot unit that shuts the server down only after a successful SSH response. |
+| `/etc/sudoers.d/servergy` | `root:root` · `0440` | Allows the configured SSH user to call only this one helper. |
+
+The exact steps, permission checks, manual fallback, and safe removal are
+described in the [server guide](docs/server-setup.md).
+
+## ⚠️ Deliberate limitations
+
+| Topic | What you should know |
+| --- | --- |
+| 🏠 **One server** | Version 1 deliberately manages only one home server. |
+| 🌙 **Powered-off devices** | A powered-off server cannot be discovered; starting it requires correctly configured Wake-on-LAN beforehand. |
+| 📡 **Network discovery** | Discovery finds SSH candidates on the current local network, but not reliable MAC addresses or general VPN targets. |
+| 🔌 **Wake-on-LAN** | Broadcasts over VPN are unreliable and are not configured by Servergy. A wired network adapter is the robust choice. |
+| 🐧 **Shutdown helper** | The documented convenient setup path requires Debian/Ubuntu with systemd. |
+| 📱 **Android 17** | Local network actions require the permission requested by the system; without it, manual VPN configuration remains possible. |
+
+## 🧪 Quality and release
+
+The stable release clearly separates automatable checks from the tests that
+must be completed on real hardware and in a real home network.
+
+| Check | Automated | Additionally required before release |
+| --- | :---: | --- |
+| Formatting, static analysis, and tests | ✅ | — |
+| Android, Linux, and Windows debug builds | ✅ | Visual review on target devices |
+| Icon consistency and Linux user installer | ✅ | Start-menu, uninstall, and storage checks on Linux |
+| Android and Windows signing | ✅ in tag workflow | Production signing secrets configured in GitHub |
+| WOL, SSH, shutdown, and VPN | — | ✅ Document with a real home server |
+| Privacy and diagnostic export | Partly | ✅ Review the export before sending it |
+
+The binding test matrix and release decision are in
+[docs/release-readiness.md](docs/release-readiness.md). The former
+[Beta documentation](docs/beta.md) remains available as an archive.
+
+## 💬 Feedback and bug reports
+
+Feedback is especially useful for real network, router, VPN, and Wake-on-LAN
+configurations. In the app, **Settings → Give feedback** opens the GitHub issue
+templates directly.
+
+| Report | Template | Please do not submit |
+| --- | --- | --- |
+| 🐛 Reproducible bug | [Report a bug](https://github.com/Web-Developer-DB/Servergy/issues/new?template=bug_report.yml) | Passwords, private keys, complete IP addresses, MAC addresses, or unredacted screenshots |
+| 💡 Usability issue or idea | [Give feedback](https://github.com/Web-Developer-DB/Servergy/issues/new?template=feedback.yml) | Credentials or diagnostic content that you have not intentionally reviewed |
+
+A diagnostic export is optional and already redacted. Review it once more
+before uploading it.
+
+## 📚 Documentation
+
+| Document | Contents |
+| --- | --- |
+| [Release readiness](docs/release-readiness.md) | Real-device test matrix, signatures, release gates, and feedback rules |
+| [Server guide](docs/server-setup.md) | Wake-on-LAN, SSH user, restricted sudoers helper, and manual fallback |
+| [Architecture](docs/architecture.md) | Data flow, components, boundaries, and security decisions |
+| [Development & tests](docs/development.md) | Local development environment, builds, quality checks, and real-device tests |
+| [Privacy](docs/privacy.md) | Local data processing and redacted diagnostic exports |
+| [Release checklist](docs/release-checklist.md) | Final checks before a stable or explicitly pre-release build |
+
+## 🤝 Contributing
+
+`Dev` is the integration branch for development; `main` remains the stable
+target branch for published releases.
+
+Before opening a pull request:
+
+```bash
+dart format lib test tool
+flutter analyze
+flutter test
+dart run tool/generate_launcher_icons.dart
+```
+
+New network or SSH features always need tests plus deliberate checks of error
+paths, cancellations, and real devices. Credentials, private keys, personal
+network data, and real diagnostics never belong in commits, tests, or
+screenshots.
+
+## 📄 License
+
+Servergy is released under the [MIT License](LICENSE).
+
+---
+
+<p align="center">
+  Built for a calmer, safer home server routine. 🏠
+</p>
