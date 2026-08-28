@@ -1,12 +1,15 @@
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:servergy/core/appearance.dart';
 import 'package:servergy/core/app_metadata.dart';
+import 'package:servergy/core/language.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
+import 'package:servergy/servergy_app.dart';
 
 void main() {
   test('builds the standard 102 byte Wake-on-LAN packet', () {
@@ -292,6 +295,91 @@ void main() {
       expect(state.error, 'Darstellung konnte nicht gespeichert werden.');
     },
   );
+
+  test('language preference safely parses stored values', () {
+    expect(LanguagePreference.fromStorage(null), LanguagePreference.system);
+    expect(
+      LanguagePreference.fromStorage('unexpected'),
+      LanguagePreference.system,
+    );
+    expect(LanguagePreference.fromStorage('german'), LanguagePreference.german);
+    expect(
+      LanguagePreference.fromStorage('english'),
+      LanguagePreference.english,
+    );
+  });
+
+  test('system locale chooses German only for the de language code', () {
+    const supported = [Locale('de'), Locale('en')];
+    expect(
+      resolveServergyLocale(const Locale('de', 'DE'), supported),
+      const Locale('de'),
+    );
+    expect(
+      resolveServergyLocale(const Locale('de', 'AT'), supported),
+      const Locale('de'),
+    );
+    expect(
+      resolveServergyLocale(const Locale('en', 'US'), supported),
+      const Locale('en'),
+    );
+    expect(
+      resolveServergyLocale(const Locale('fr', 'FR'), supported),
+      const Locale('en'),
+    );
+    expect(resolveServergyLocale(null, supported), const Locale('en'));
+  });
+
+  test('language controller persists and restores a selection', () async {
+    final store = _MemoryLanguageStore(LanguagePreference.german);
+    final container = ProviderContainer(
+      overrides: [languageStoreProvider.overrideWithValue(store)],
+    );
+    addTearDown(container.dispose);
+
+    container.read(languageProvider);
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      container.read(languageProvider).preference,
+      LanguagePreference.german,
+    );
+
+    await container
+        .read(languageProvider.notifier)
+        .select(LanguagePreference.english);
+    expect(store.saved, LanguagePreference.english);
+
+    final restored = ProviderContainer(
+      overrides: [languageStoreProvider.overrideWithValue(store)],
+    );
+    addTearDown(restored.dispose);
+    restored.read(languageProvider);
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      restored.read(languageProvider).preference,
+      LanguagePreference.english,
+    );
+  });
+
+  test(
+    'language controller restores the previous value after save failure',
+    () async {
+      final store = _MemoryLanguageStore()..failSave = true;
+      final container = ProviderContainer(
+        overrides: [languageStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(languageProvider.notifier)
+          .select(LanguagePreference.english);
+
+      final state = container.read(languageProvider);
+      expect(state.preference, LanguagePreference.system);
+      expect(state.saving, isFalse);
+      expect(state.error, 'Die Sprache konnte nicht gespeichert werden.');
+    },
+  );
 }
 
 class _MemoryAppearanceStore implements AppearanceStore {
@@ -306,6 +394,24 @@ class _MemoryAppearanceStore implements AppearanceStore {
 
   @override
   Future<void> save(AppearancePreference value) async {
+    if (failSave) throw StateError('write failed');
+    saved = value;
+    preference = value;
+  }
+}
+
+class _MemoryLanguageStore implements LanguageStore {
+  _MemoryLanguageStore([this.preference = LanguagePreference.system]);
+
+  LanguagePreference preference;
+  LanguagePreference? saved;
+  bool failSave = false;
+
+  @override
+  Future<LanguagePreference> load() async => preference;
+
+  @override
+  Future<void> save(LanguagePreference value) async {
     if (failSave) throw StateError('write failed');
     saved = value;
     preference = value;

@@ -16,6 +16,7 @@ sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev \
 
 ~~~bash
 flutter pub get
+flutter gen-l10n
 flutter analyze
 flutter test
 ~~~
@@ -40,6 +41,7 @@ die App geöffnet bleiben, während WOL- und Shutdown-Polling laufen.
 
 ~~~bash
 dart format lib test tool
+flutter gen-l10n
 flutter analyze
 flutter test
 dart run tool/generate_launcher_icons.dart
@@ -65,6 +67,27 @@ Windows-ICO; Binärdateien werden nicht manuell bearbeitet. Ein Linux-Bundle
 wird für den angemeldeten Benutzer mit `./install-linux.sh` installiert. Das
 Skript legt `uninstall-linux.sh` im Installationsordner ab und verändert weder
 Systemverzeichnisse noch Serverkonfigurationen.
+
+## Sprache und Lokalisierung
+
+Die App unterstützt Deutsch und Englisch. `lib/l10n/app_en.arb` und
+`lib/l10n/app_de.arb` sind die Quelltexte; `flutter gen-l10n` erzeugt daraus
+die nicht manuell gepflegten Dart-Dateien unter `lib/l10n/generated`.
+
+**Systemstandard** wählt Deutsch ausschließlich für den Sprachcode `de`
+(beispielsweise `de-DE` oder `de-AT`) und Englisch für jede andere
+Systemsprache. Die gespeicherte Auswahl **Deutsch** oder **English** hat
+Vorrang vor dem Systemstandard.
+
+Vor einem Release beide Sprachen auf Android, Linux und Windows prüfen:
+
+1. Systemstandard mit einer deutschen Systemsprache testen.
+2. Systemstandard mit Englisch und einer dritten Sprache testen; beide müssen
+   die englische App anzeigen.
+3. In den Einstellungen nacheinander Deutsch, English und Systemstandard
+   wählen und die Wiederherstellung nach einem Neustart prüfen.
+4. Home, Einrichtung, Ereignisse, Produktinformationen sowie Datenschutz- und
+   Serveranleitung in beiden Sprachen öffnen.
 
 ## Realgerät-Test
 
@@ -124,4 +147,5 @@ Testreihenfolge:
 - Kommentare erklären besonders Sicherheitsgründe und nicht offensichtliche
   Plattformgrenzen.
 - Keine Geheimnisse in Tests, Logs, Fixtures oder Screenshots committen.
-- User-facing Fehler bleiben deutsch und nennen eine konkrete nächste Aktion.
+- Sichtbare Meldungen werden über den Lokalisierungskatalog in Deutsch und
+  Englisch bereitgestellt und nennen weiterhin eine konkrete nächste Aktion.

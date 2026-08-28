@@ -63,6 +63,7 @@ jobs:
           echo "$KEYSTORE" | base64 --decode > android/app/servergy-release.jks
           printf 'storeFile=servergy-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
       - run: flutter pub get
+      - run: flutter gen-l10n
       - run: flutter analyze
       - run: flutter test
       - run: dart run tool/generate_launcher_icons.dart
@@ -94,6 +95,7 @@ jobs:
           CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: if (!$env:CERTIFICATE -or !$env:CERTIFICATE_PASSWORD) { throw 'Windows signing secrets are required.' }
       - run: flutter pub get
+      - run: flutter gen-l10n
       - run: flutter analyze
       - run: flutter test
       - run: dart run tool/generate_launcher_icons.dart

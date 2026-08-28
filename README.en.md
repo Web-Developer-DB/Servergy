@@ -30,7 +30,7 @@ be managed through a complex administration interface.
   <a href="https://github.com/Web-Developer-DB/Servergy/releases">
     <img src="https://img.shields.io/badge/Version-0.1.0-0F4C81?style=flat-square" alt="Version 0.1.0" />
   </a>
-  <a href="docs/privacy.md">
+  <a href="docs/privacy.en.md">
     <img src="https://img.shields.io/badge/Privacy-local%20%26%20no%20telemetry-0B7A43?style=flat-square" alt="Local data processing without telemetry" />
   </a>
   <a href="LICENSE">
@@ -76,6 +76,16 @@ the foreground and connects only to the home server you configure.
 | ⏻ **Safe shutdown** | Uses a restricted, root-owned Servergy helper with a fixed systemd unit. | No general-purpose `sudo` and no freely chosen remote commands. |
 | 🧾 **Events** | Keeps a bounded, local, redacted activity log. | Useful diagnostics without profile or network data in the export. |
 | 🎨 **Platform-ready** | System default plus light or dark Material 3 appearance, large interaction targets, and native launcher and start-menu icons. | A calm, understandable experience on Android, Linux, and Windows. |
+| 🌐 **Bilingual** | System default, Deutsch, or English; German system languages select German and all others select English. | Change the language any time directly in Settings. |
+
+### 🌐 Language
+
+Servergy supports German and English. The default **System default** follows
+your operating system: `de`, `de-DE`, `de-AT`, and other German variants open
+the app in German; every other system language automatically opens it in
+English. In **Settings → Language**, choose **Deutsch** or **English**
+permanently, or return to the system default. The selection applies instantly
+throughout the app and remains after restart.
 
 ### 🎨 Brand and app icons
 
@@ -247,10 +257,10 @@ before uploading it.
 | Document | Contents |
 | --- | --- |
 | [Release readiness](docs/release-readiness.md) | Real-device test matrix, signatures, release gates, and feedback rules |
-| [Server guide](docs/server-setup.md) | Wake-on-LAN, SSH user, restricted sudoers helper, and manual fallback |
+| [Server guide](docs/server-setup.en.md) | Wake-on-LAN, SSH user, restricted sudoers helper, and manual fallback |
 | [Architecture](docs/architecture.md) | Data flow, components, boundaries, and security decisions |
 | [Development & tests](docs/development.md) | Local development environment, builds, quality checks, and real-device tests |
-| [Privacy](docs/privacy.md) | Local data processing and redacted diagnostic exports |
+| [Privacy](docs/privacy.en.md) | Local data processing and redacted diagnostic exports |
 | [Release checklist](docs/release-checklist.md) | Final checks before a stable or explicitly pre-release build |
 
 ## 🤝 Contributing

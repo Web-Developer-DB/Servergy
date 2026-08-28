@@ -76,6 +76,16 @@ im Vordergrund und verbindet sich nur mit dem Homeserver, den du einrichtest.
 | ⏻ **Sicher herunterfahren** | Nutzt einen eingeschränkten, root-eigenen Servergy-Helper mit einer festen systemd-Unit. | Kein allgemeines `sudo`, keine frei wählbaren Fernbefehle. |
 | 🧾 **Ereignisse** | Hält ein lokales, begrenztes und redigiertes Aktivitätsprotokoll bereit. | Hilfreiche Diagnose ohne Profil- oder Netzwerkdaten im Export. |
 | 🎨 **Plattformgerecht** | Systemstandard sowie helle oder dunkle Material-3-Oberfläche, große Interaktionsflächen und native Launcher- und Startmenü-Icons. | Eine ruhige, verständliche Bedienung auf Android, Linux und Windows. |
+| 🌐 **Zweisprachig** | Systemstandard, Deutsch oder English; deutsche Systemsprachen wählen Deutsch, alle anderen Englisch. | Die Sprache kann jederzeit direkt in den Einstellungen geändert werden. |
+
+### 🌐 Sprache
+
+Servergy unterstützt Deutsch und Englisch. Die Voreinstellung **Systemstandard**
+folgt deinem Betriebssystem: Bei `de`, `de-DE`, `de-AT` und weiteren deutschen
+Sprachvarianten erscheint die App auf Deutsch; jede andere Systemsprache führt
+automatisch zu Englisch. Unter **Einstellungen → Sprache** kannst du dauerhaft
+**Deutsch** oder **English** wählen oder zum Systemstandard zurückkehren. Die
+Auswahl gilt sofort in der gesamten App und bleibt nach einem Neustart erhalten.
 
 ### 🎨 Marke und App-Icons
 
