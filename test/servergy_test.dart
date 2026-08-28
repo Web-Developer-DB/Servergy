@@ -207,13 +207,13 @@ void main() {
         appName: 'servergy',
         packageName: 'dev.servergy.servergy',
         version: '0.1.0',
-        buildNumber: '4',
+        buildNumber: '5',
       ),
     );
 
     expect(metadata.name, 'Servergy');
     expect(metadata.releaseChannel, 'Stabil');
-    expect(metadata.versionLabel, '0.1.0 (Build 4)');
+    expect(metadata.versionLabel, '0.1.0 (Build 5)');
     expect(metadata.supportText, contains('Plattform:'));
     expect(metadata.supportText, isNot(contains('192.168.')));
   });

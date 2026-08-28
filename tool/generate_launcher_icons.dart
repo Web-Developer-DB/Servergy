@@ -13,11 +13,15 @@ import 'package:image/image.dart' as image;
 
 const _brandLockup = 'assets/branding/servergy-brand-lockup.png';
 const _masterSize = 1024;
+// Android adaptive icons may mask and crop the outer 18 dp of a 108 dp
+// foreground layer. Keep every meaningful part of the Servergy mark in the
+// central safe zone so launchers such as MIUI do not cut off either arrow.
+const _androidAdaptiveForegroundScale = .72;
 
 void main() {
   final root = Directory.current;
   final master = _loadMaster(root);
-  final foreground = _makeForeground(master);
+  final foreground = _makeAndroidAdaptiveForeground(master);
   final monochrome = _makeMonochrome(foreground);
 
   _writePng(root.uri.resolve('assets/branding/servergy-icon.png'), master);
@@ -213,8 +217,8 @@ int _roundedRectAlpha(
   return _byte((0.5 - distance).clamp(0.0, 1.0) * 255);
 }
 
-image.Image _makeForeground(image.Image master) {
-  final foreground = image.Image(
+image.Image _makeAndroidAdaptiveForeground(image.Image master) {
+  final isolatedMark = image.Image(
     width: master.width,
     height: master.height,
     numChannels: 4,
@@ -223,7 +227,7 @@ image.Image _makeForeground(image.Image master) {
     for (var x = 0; x < master.width; x++) {
       final pixel = master.getPixel(x, y);
       final alpha = _byte(pixel.a);
-      foreground.setPixelRgba(
+      isolatedMark.setPixelRgba(
         x,
         y,
         _byte(pixel.r),
@@ -233,6 +237,21 @@ image.Image _makeForeground(image.Image master) {
       );
     }
   }
+
+  final foreground = image.Image(
+    width: master.width,
+    height: master.height,
+    numChannels: 4,
+  );
+  image.fill(foreground, color: image.ColorRgba8(0, 0, 0, 0));
+  final scaledSize = (master.width * _androidAdaptiveForegroundScale).round();
+  final inset = (master.width - scaledSize) ~/ 2;
+  image.compositeImage(
+    foreground,
+    _resize(isolatedMark, scaledSize),
+    dstX: inset,
+    dstY: inset,
+  );
   return foreground;
 }
 
