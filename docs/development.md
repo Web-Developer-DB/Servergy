@@ -76,9 +76,9 @@ Für einen reproduzierbaren End-to-End-Test werden benötigt:
 - idealerweise eine kabelgebundene Netzwerkkarte,
 - ein Telefon im selben LAN oder ein korrekt eingerichtetes VPN.
 
-Die verbindliche Beta-Abnahme inklusive Android-, Linux- und Windows-Protokoll
-steht in [beta.md](beta.md). Jeder Beta-Tag setzt deren vollständige Abnahme
-voraus.
+Die verbindliche Release-Abnahme inklusive Android-, Linux- und Windows-
+Protokoll steht in [release-readiness.md](release-readiness.md). Jeder stabile
+Release-Tag setzt deren vollständige Abnahme voraus.
 
 Testreihenfolge:
 

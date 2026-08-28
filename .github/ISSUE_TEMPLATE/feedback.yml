@@ -1,7 +1,7 @@
-name: Beta-Feedback geben
-description: Teile Bedienbarkeit, Stabilität oder Wünsche für Servergy Beta.
-title: "[Beta-Feedback]: "
-labels: ["beta-feedback"]
+name: Feedback geben
+description: Teile Bedienbarkeit, Stabilität oder Wünsche für Servergy.
+title: "[Feedback]: "
+labels: ["feedback"]
 body:
   - type: markdown
     attributes:
@@ -12,7 +12,8 @@ body:
     id: version
     attributes:
       label: Servergy-Version
-      placeholder: 0.1.0-beta.1 (Build 3)
+      description: Unter Einstellungen → Über Servergy.
+      placeholder: 0.1.0 (Build 4)
     validations:
       required: true
   - type: dropdown

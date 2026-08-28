@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:servergy/core/appearance.dart';
 import 'package:servergy/core/app_metadata.dart';
 import 'package:servergy/core/controller.dart';
 import 'package:servergy/core/models.dart';
@@ -153,6 +154,77 @@ void main() {
     );
   });
 
+  testWidgets('settings expose the three persistent appearance choices', (
+    tester,
+  ) async {
+    final appearanceStore = _MemoryAppearanceStore();
+    await tester.pumpWidget(_settings(appearanceStore: appearanceStore));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('appearance-setting')), findsOneWidget);
+    expect(find.text('Systemstandard'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('appearance-setting')));
+    await tester.pumpAndSettle();
+    expect(find.text('Hell'), findsOneWidget);
+    expect(find.text('Dunkel'), findsOneWidget);
+
+    await tester.tap(find.text('Dunkel'));
+    await tester.pumpAndSettle();
+    expect(appearanceStore.saved, AppearancePreference.dark);
+    expect(find.text('Dunkel'), findsOneWidget);
+  });
+
+  testWidgets('root applies the selected appearance mode to MaterialApp', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appearanceProvider.overrideWith(
+            () => _StaticAppearanceController(AppearancePreference.dark),
+          ),
+          controllerProvider.overrideWith(() => _StaticServerController(null)),
+        ],
+        child: const ServergyApp(),
+      ),
+    );
+    await tester.pump();
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(materialApp.themeMode, ThemeMode.dark);
+  });
+
+  testWidgets('changing appearance immediately updates the app theme', (
+    tester,
+  ) async {
+    final appearanceStore = _MemoryAppearanceStore();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appearanceProvider.overrideWith(
+            () => _StaticAppearanceController(AppearancePreference.system),
+          ),
+          appearanceStoreProvider.overrideWithValue(appearanceStore),
+          controllerProvider.overrideWith(() => _StaticServerController(null)),
+        ],
+        child: const ServergyApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Einstellungen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('appearance-setting')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dunkel'));
+    await tester.pumpAndSettle();
+
+    final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(materialApp.themeMode, ThemeMode.dark);
+    expect(appearanceStore.saved, AppearancePreference.dark);
+  });
+
   testWidgets('deleting a saved connection requires confirmation in settings', (
     tester,
   ) async {
@@ -218,38 +290,40 @@ void main() {
   ) async {
     const metadata = AppMetadata(
       name: 'Servergy',
-      version: '0.1.0-beta.1',
-      build: '3',
-      releaseChannel: 'Beta',
+      version: '0.1.0',
+      build: '4',
+      releaseChannel: 'Stabil',
       platform: 'android',
     );
     await tester.pumpWidget(_settings(metadata: metadata));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Über Servergy'), 240);
+    await tester.pumpAndSettle();
 
-    expect(find.text('Beta · 0.1.0-beta.1 (Build 3)'), findsOneWidget);
+    expect(find.text('Stabil · 0.1.0 (Build 4)'), findsOneWidget);
     expect(find.text('Versionsinformationen kopieren'), findsOneWidget);
   });
 
-  testWidgets('beta feedback warns before opening an external issue form', (
+  testWidgets('feedback warns before opening an external issue form', (
     tester,
   ) async {
     _setViewport(tester, const Size(400, 1000));
     await tester.pumpWidget(_settings(profile: _profile));
     await tester.pumpAndSettle();
 
-    final feedback = find.text('Beta-Feedback geben');
+    final feedback = find.text('Feedback geben');
     await tester.scrollUntilVisible(feedback, 160);
     await tester.tap(feedback);
     await tester.pumpAndSettle();
 
-    expect(find.text('Beta-Feedback sicher senden'), findsOneWidget);
+    expect(find.text('Feedback sicher senden'), findsOneWidget);
     expect(
       find.textContaining('Passwörter, privaten Schlüssel'),
       findsOneWidget,
     );
     await tester.tap(find.text('Abbrechen'));
     await tester.pumpAndSettle();
-    expect(find.text('Beta-Feedback sicher senden'), findsNothing);
+    expect(find.text('Feedback sicher senden'), findsNothing);
   });
 
   test(
@@ -304,15 +378,21 @@ Widget _home({ServerProfile? profile}) => ProviderScope(
   child: const MaterialApp(home: HomeScreen()),
 );
 
-Widget _settings({ServerProfile? profile, AppMetadata? metadata}) =>
-    ProviderScope(
-      overrides: [
-        controllerProvider.overrideWith(() => _StaticServerController(profile)),
-        if (metadata != null)
-          appMetadataProvider.overrideWith((ref) async => metadata),
-      ],
-      child: const MaterialApp(home: SettingsScreen()),
-    );
+Widget _settings({
+  ServerProfile? profile,
+  AppMetadata? metadata,
+  AppearanceStore? appearanceStore,
+}) => ProviderScope(
+  overrides: [
+    controllerProvider.overrideWith(() => _StaticServerController(profile)),
+    appearanceStoreProvider.overrideWithValue(
+      appearanceStore ?? _MemoryAppearanceStore(),
+    ),
+    if (metadata != null)
+      appMetadataProvider.overrideWithValue(AsyncData(metadata)),
+  ],
+  child: const MaterialApp(home: SettingsScreen()),
+);
 
 void _setViewport(WidgetTester tester, Size size, {double textScale = 1}) {
   tester.view.physicalSize = size;
@@ -342,6 +422,16 @@ class _StateServerController extends ServerController {
 
   @override
   AppState build() => appState;
+}
+
+class _StaticAppearanceController extends AppearanceController {
+  _StaticAppearanceController(this.preference);
+
+  final AppearancePreference preference;
+
+  @override
+  AppearanceState build() =>
+      AppearanceState(preference: preference, loaded: true);
 }
 
 class _StaticDiscoveryController extends DiscoveryController {
@@ -398,4 +488,20 @@ class _MemoryProfileStore implements ProfileStore {
 
   @override
   Future<void> updatePassword(SecretUpdate update) async {}
+}
+
+class _MemoryAppearanceStore implements AppearanceStore {
+  _MemoryAppearanceStore() : preference = AppearancePreference.system;
+
+  AppearancePreference preference;
+  AppearancePreference? saved;
+
+  @override
+  Future<AppearancePreference> load() async => preference;
+
+  @override
+  Future<void> save(AppearancePreference value) async {
+    saved = value;
+    preference = value;
+  }
 }

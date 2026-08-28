@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Installs one Servergy beta bundle for the current user only. No system path
+# Installs one Servergy bundle for the current user only. No system path
 # and no administrator privilege is modified.
 set -eu
 
@@ -20,7 +20,7 @@ case "$DATA_HOME" in
 esac
 
 if [ ! -x "$BUNDLE_DIR/servergy" ] || [ ! -d "$BUNDLE_DIR/data" ] || [ ! -d "$BUNDLE_DIR/lib" ] || [ ! -x "$BUNDLE_DIR/uninstall-linux.sh" ]; then
-  echo "Dieses Verzeichnis enthält kein vollständiges Servergy-Beta-Bundle." >&2
+  echo "Dieses Verzeichnis enthält kein vollständiges Servergy-Bundle." >&2
   exit 1
 fi
 
@@ -47,6 +47,6 @@ command -v update-desktop-database >/dev/null 2>&1 && \
 command -v gtk-update-icon-cache >/dev/null 2>&1 && \
   gtk-update-icon-cache -f "$DATA_HOME/icons/hicolor" || true
 
-echo "Servergy Beta wurde für diesen Benutzer installiert."
+echo "Servergy wurde für diesen Benutzer installiert."
 echo "Starte Servergy über das Anwendungsmenü oder: $APP_DIR/servergy"
 echo "Zum Entfernen: $APP_DIR/uninstall-linux.sh"

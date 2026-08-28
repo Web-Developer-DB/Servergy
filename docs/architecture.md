@@ -1,6 +1,6 @@
 # Servergy-Architektur
 
-Dieses Dokument beschreibt die technische Struktur der Beta. Ziel ist, dass
+Dieses Dokument beschreibt die technische Struktur der stabilen App. Ziel ist, dass
 auch neue Entwickler nachvollziehen können, welche Schicht für welche Aufgabe
 verantwortlich ist und wo Sicherheitsentscheidungen umgesetzt werden.
 
@@ -54,6 +54,16 @@ Betriebssystem / Netzwerk / Homeserver
 Validierung, Profilmigration und Diagnoseformat unabhängig von Widgets getestet
 werden. `lib/core/services.dart` enthält I/O und wird in Controller-Tests durch
 Fakes ersetzt. `lib/core/controller.dart` koordiniert die zeitlichen Abläufe.
+
+Die Darstellung ist bewusst von diesem Netzwerkdatenfluss getrennt:
+`AppearanceController` lädt `system`, `light` oder `dark` über den dedizierten
+`SharedPreferencesAsync`-Schlüssel `servergy.appearance.v1`. Eine ungültige oder
+nicht lesbare Einstellung fällt auf den Systemstandard zurück; beim
+Schreibfehler wird die vorherige Auswahl wiederhergestellt. Der Controller
+erzeugt dabei weder Netzwerkaktionen noch Diagnoseereignisse. `AppMetadata`
+liest Version, Build, Kanal und Plattform ausschließlich aus den installierten
+Paketmetadaten und stellt sie unter „Über Servergy“ sowie für Supportkopien
+bereit.
 
 ## Profilformat V3
 

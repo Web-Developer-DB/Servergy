@@ -121,7 +121,7 @@ install(CODE "
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
-# Desktop launchers need a real hicolor icon after the beta bundle is installed
+# Desktop launchers need a real hicolor icon after the Servergy bundle is installed
 # into a user's home directory. Keep those files alongside the bundle so the
 # installer can register them without requiring administrator rights.
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/packaging/icons/"
