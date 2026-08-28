@@ -138,7 +138,8 @@ Die vollständige, sichere Einrichtung für Debian/Ubuntu mit systemd steht in
 
 - Flutter/Dart passend zu `pubspec.yaml`
 - Android Studio/JDK für Android-Builds
-- unter Linux: `libsecret-1-dev` und `libsecret-1-0`
+- unter Linux: `clang`, `cmake`, `ninja-build`, `pkg-config`, `libgtk-3-dev`,
+  `libsecret-1-dev` und `libsecret-1-0`
 - ein Android-Gerät/Emulator, Linux-Desktop oder Windows-Entwicklungsrechner
 
 ```bash

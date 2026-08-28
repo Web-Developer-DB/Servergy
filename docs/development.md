@@ -8,7 +8,8 @@
 4. Unter Linux die Secret-Service-Bibliotheken installieren:
 
 ~~~bash
-sudo apt install libsecret-1-dev libsecret-1-0
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev \
+  libsecret-1-dev libsecret-1-0
 ~~~
 
 5. Abhängigkeiten laden und statische Prüfung starten:
