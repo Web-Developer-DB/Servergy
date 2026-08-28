@@ -14,6 +14,18 @@ if (signingPropertiesFile.exists()) {
     signingPropertiesFile.inputStream().use { signingProperties.load(it) }
 }
 
+val releaseTasksRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+val requiredSigningProperties = listOf(
+    "storeFile",
+    "storePassword",
+    "keyAlias",
+    "keyPassword",
+)
+val hasReleaseSigning = signingPropertiesFile.exists() &&
+    requiredSigningProperties.all { !signingProperties.getProperty(it).isNullOrBlank() }
+
 android {
     namespace = "dev.servergy.servergy"
     // flutter_secure_storage requires Android API 37 at compile time.
@@ -40,17 +52,19 @@ android {
 
     buildTypes {
         release {
-            if (signingPropertiesFile.exists()) {
+            if (hasReleaseSigning) {
                 signingConfig = signingConfigs.create("servergyRelease") {
                     keyAlias = signingProperties.getProperty("keyAlias")
                     keyPassword = signingProperties.getProperty("keyPassword")
                     storeFile = file(signingProperties.getProperty("storeFile"))
                     storePassword = signingProperties.getProperty("storePassword")
                 }
-            } else {
-                // Local builds remain possible; tagged CI releases fail before
-                // building when the mandatory signing secrets are unavailable.
-                signingConfig = signingConfigs.getByName("debug")
+            } else if (releaseTasksRequested) {
+                throw GradleException(
+                    "A production release requires android/key.properties and " +
+                        "the configured production keystore. Use the signed GitHub " +
+                        "release workflow when local signing material is unavailable.",
+                )
             }
         }
     }

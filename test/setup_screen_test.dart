@@ -380,7 +380,7 @@ void main() {
     const metadata = AppMetadata(
       name: 'Servergy',
       version: '0.1.0',
-      build: '4',
+      build: '5',
       releaseChannel: 'Stabil',
       platform: 'android',
     );
@@ -389,7 +389,7 @@ void main() {
     await tester.scrollUntilVisible(find.text('Über Servergy'), 240);
     await tester.pumpAndSettle();
 
-    expect(find.text('Stabil · 0.1.0 (Build 4)'), findsOneWidget);
+    expect(find.text('Stabil · 0.1.0 (Build 5)'), findsOneWidget);
     expect(find.text('Versionsinformationen kopieren'), findsOneWidget);
   });
 

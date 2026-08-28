@@ -45,5 +45,6 @@ hochgeladen werden.
 
 `v0.1.0` wird erst veröffentlicht, wenn alle automatischen Gates grün sind, die
 Realtest-Matrix keine blockierenden Fehler enthält und die produktiven
-Signatursecrets in GitHub verfügbar sind. Ein lokal fallback-signiertes APK
-ist ausschließlich für Entwicklung und Geräteprüfungen geeignet.
+Signatursecrets in GitHub verfügbar sind. Lokale Debug-APKs sind ausschließlich
+für Entwicklung und Geräteprüfungen geeignet; der Android-Release-Build
+verweigert ohne Produktionskeystore bewusst die Erstellung.
