@@ -1,21 +1,24 @@
-// Generates every binary launcher asset from the committed ServergyMark.
-// Run with `dart run tool/generate_launcher_icons.dart` after changing the
-// SVG master. The visual geometry intentionally mirrors the SVG so platform
-// launchers do not depend on an editor-specific export step.
+// Generates every binary launcher asset from the approved Servergy brand
+// lockup. Run with `dart run tool/generate_launcher_icons.dart` after
+// replacing assets/branding/servergy-brand-lockup.png.
+//
+// The supplied lockup contains the app tile and its wordmark on a preview
+// checkerboard. This tool deterministically isolates the tile, turns its
+// rounded outer corners transparent, and creates every platform derivative.
+// The source lockup is not bundled with the Flutter application.
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:image/image.dart' as image;
 
-const _navy = (9, 42, 61, 255);
-const _surface = (246, 248, 251, 255);
-const _green = (78, 226, 154, 255);
-const _cyan = (117, 214, 244, 255);
+const _brandLockup = 'assets/branding/servergy-brand-lockup.png';
+const _masterSize = 1024;
 
 void main() {
   final root = Directory.current;
-  final master = _drawMark(1024, includeBackground: true);
-  final foreground = _drawMark(1024, includeBackground: false);
-  final monochrome = _drawMark(1024, monochrome: true);
+  final master = _loadMaster(root);
+  final foreground = _makeForeground(master);
+  final monochrome = _makeMonochrome(foreground);
 
   _writePng(root.uri.resolve('assets/branding/servergy-icon.png'), master);
   _writePng(
@@ -37,7 +40,7 @@ void main() {
   for (final entry in androidSizes.entries) {
     _writePng(
       root.uri.resolve('android/app/src/main/res/${entry.key}/ic_launcher.png'),
-      image.copyResize(master, width: entry.value, height: entry.value),
+      _resize(master, entry.value),
     );
   }
   _writePng(
@@ -53,9 +56,9 @@ void main() {
     monochrome,
   );
 
-  final ico = image.copyResize(master, width: 16, height: 16);
+  final ico = _resize(master, 16);
   for (final size in [24, 32, 48, 64, 128, 256]) {
-    ico.addFrame(image.copyResize(master, width: size, height: size));
+    ico.addFrame(_resize(master, size));
   }
   _writeBytes(
     root.uri.resolve('windows/runner/resources/app_icon.ico'),
@@ -68,7 +71,7 @@ void main() {
         'linux/packaging/icons/hicolor/${size}x$size/apps/'
         'dev.servergy.servergy.png',
       ),
-      image.copyResize(master, width: size, height: size),
+      _resize(master, size),
     );
   }
   final scalable = File.fromUri(
@@ -80,79 +83,230 @@ void main() {
   File.fromUri(
     root.uri.resolve('assets/branding/servergy-mark.svg'),
   ).copySync(scalable.path);
+
+  stdout.writeln('Generated Android, Windows, and Linux launcher icons.');
 }
 
-image.Image _drawMark(
-  int size, {
-  bool includeBackground = false,
-  bool monochrome = false,
-}) {
-  final canvas = image.Image(width: size, height: size, numChannels: 4);
-  image.fill(canvas, color: _color(0, 0, 0, 0));
-  int scale(num value) => (value * size / 1024).round();
-
-  if (includeBackground) {
-    image.fillRect(
-      canvas,
-      x1: scale(32),
-      y1: scale(32),
-      x2: scale(992),
-      y2: scale(992),
-      radius: scale(232),
-      color: _tupleColor(_navy),
+image.Image _loadMaster(Directory root) {
+  final sourceFile = File.fromUri(root.uri.resolve(_brandLockup));
+  if (!sourceFile.existsSync()) {
+    throw StateError('Approved brand lockup is missing: ${sourceFile.path}');
+  }
+  final source = image.decodePng(sourceFile.readAsBytesSync());
+  if (source == null) {
+    throw StateError(
+      'Unable to decode approved brand lockup: ${sourceFile.path}',
     );
   }
 
-  final rackColor = _tupleColor(monochrome ? _surface : _surface);
-  final detailColor = _tupleColor(monochrome ? _surface : _navy);
-  final green = _tupleColor(monochrome ? _surface : _green);
-  final cyan = _tupleColor(monochrome ? _surface : _cyan);
-  for (final top in [250, 440, 630]) {
-    image.fillRect(
-      canvas,
-      x1: scale(224),
-      y1: scale(top),
-      x2: scale(800),
-      y2: scale(top + 144),
-      radius: scale(44),
-      color: rackColor,
-    );
-    if (!monochrome) {
-      image.fillRect(
-        canvas,
-        x1: scale(302),
-        y1: scale(top + 53),
-        x2: scale(546),
-        y2: scale(top + 75),
-        radius: scale(11),
-        color: detailColor,
+  final extractedTile = _extractTile(source);
+  return _resize(extractedTile, _masterSize);
+}
+
+image.Image _extractTile(image.Image source) {
+  final bounds = _findNavyTileBounds(source);
+  final side = math.max(bounds.width, bounds.height);
+  final tile = image.copyCrop(
+    source,
+    x: bounds.left,
+    y: bounds.top,
+    width: bounds.width,
+    height: bounds.height,
+  );
+  final square = image.Image(width: side, height: side, numChannels: 4);
+  image.fill(square, color: image.ColorRgba8(0, 0, 0, 0));
+  final insetX = ((side - tile.width) / 2).floor();
+  final insetY = ((side - tile.height) / 2).floor();
+  for (var y = 0; y < tile.height; y++) {
+    for (var x = 0; x < tile.width; x++) {
+      final pixel = tile.getPixel(x, y);
+      square.setPixelRgba(
+        x + insetX,
+        y + insetY,
+        _byte(pixel.r),
+        _byte(pixel.g),
+        _byte(pixel.b),
+        _byte(pixel.a),
       );
     }
-    image.fillCircle(
-      canvas,
-      x: scale(666),
-      y: scale(top + 72),
-      radius: scale(28),
-      color: green,
-      antialias: true,
-    );
-    image.fillCircle(
-      canvas,
-      x: scale(732),
-      y: scale(top + 72),
-      radius: scale(28),
-      color: cyan,
-      antialias: true,
-    );
   }
-  return canvas;
+
+  // The supplied file is an RGB preview, so its checkerboard is baked into
+  // the pixels. A rounded mask preserves the approved dark tile while making
+  // only the outside corners transparent for launcher use.
+  return _maskRoundedCorners(square, radius: side * 0.26);
 }
 
-image.ColorRgba8 _tupleColor((int, int, int, int) value) =>
-    _color(value.$1, value.$2, value.$3, value.$4);
+_Bounds _findNavyTileBounds(image.Image source) {
+  var left = source.width;
+  var top = source.height;
+  var right = -1;
+  var bottom = -1;
 
-image.ColorRgba8 _color(int red, int green, int blue, int alpha) =>
-    image.ColorRgba8(red, green, blue, alpha);
+  for (var y = 0; y < source.height; y++) {
+    for (var x = 0; x < source.width; x++) {
+      if (!_isNavy(source.getPixel(x, y))) continue;
+      left = math.min(left, x);
+      top = math.min(top, y);
+      right = math.max(right, x);
+      bottom = math.max(bottom, y);
+    }
+  }
+
+  if (right < 0 || bottom < 0) {
+    throw StateError(
+      'Unable to locate the navy app tile in the approved lockup.',
+    );
+  }
+  return _Bounds(left, top, right, bottom);
+}
+
+image.Image _maskRoundedCorners(image.Image source, {required double radius}) {
+  final result = image.Image(
+    width: source.width,
+    height: source.height,
+    numChannels: 4,
+  );
+  for (var y = 0; y < source.height; y++) {
+    for (var x = 0; x < source.width; x++) {
+      final pixel = source.getPixel(x, y);
+      final roundedAlpha = _roundedRectAlpha(
+        x + 0.5,
+        y + 0.5,
+        source.width.toDouble(),
+        source.height.toDouble(),
+        radius,
+      );
+      final alpha = (_byte(pixel.a) * roundedAlpha / 255).round();
+      final detail = _isApprovedMarkDetail(
+        pixel,
+        x,
+        y,
+        source.width,
+        source.height,
+      );
+      result.setPixelRgba(
+        x,
+        y,
+        detail ? _byte(pixel.r) : 6,
+        detail ? _byte(pixel.g) : 41,
+        detail ? _byte(pixel.b) : 59,
+        alpha,
+      );
+    }
+  }
+  return result;
+}
+
+int _roundedRectAlpha(
+  double x,
+  double y,
+  double width,
+  double height,
+  double radius,
+) {
+  final halfWidth = width / 2;
+  final halfHeight = height / 2;
+  final dx = math.max((x - halfWidth).abs() - (halfWidth - radius), 0.0);
+  final dy = math.max((y - halfHeight).abs() - (halfHeight - radius), 0.0);
+  final distance = math.sqrt(dx * dx + dy * dy) - radius;
+  return _byte((0.5 - distance).clamp(0.0, 1.0) * 255);
+}
+
+image.Image _makeForeground(image.Image master) {
+  final foreground = image.Image(
+    width: master.width,
+    height: master.height,
+    numChannels: 4,
+  );
+  for (var y = 0; y < master.height; y++) {
+    for (var x = 0; x < master.width; x++) {
+      final pixel = master.getPixel(x, y);
+      final alpha = _byte(pixel.a);
+      foreground.setPixelRgba(
+        x,
+        y,
+        _byte(pixel.r),
+        _byte(pixel.g),
+        _byte(pixel.b),
+        alpha == 0 || _isNavy(pixel) ? 0 : alpha,
+      );
+    }
+  }
+  return foreground;
+}
+
+image.Image _makeMonochrome(image.Image foreground) {
+  final monochrome = image.Image(
+    width: foreground.width,
+    height: foreground.height,
+    numChannels: 4,
+  );
+  for (var y = 0; y < foreground.height; y++) {
+    for (var x = 0; x < foreground.width; x++) {
+      final alpha = _byte(foreground.getPixel(x, y).a);
+      monochrome.setPixelRgba(x, y, 255, 255, 255, alpha);
+    }
+  }
+  return monochrome;
+}
+
+image.Image _resize(image.Image source, int size) => image.copyResize(
+  source,
+  width: size,
+  height: size,
+  interpolation: image.Interpolation.cubic,
+);
+
+bool _isNavy(image.Pixel pixel) {
+  final red = _byte(pixel.r);
+  final green = _byte(pixel.g);
+  final blue = _byte(pixel.b);
+  return red < 80 &&
+      green < 110 &&
+      blue < 130 &&
+      green - red > 12 &&
+      blue - green > 6;
+}
+
+bool _isApprovedMarkDetail(
+  image.Pixel pixel,
+  int x,
+  int y,
+  int width,
+  int height,
+) {
+  final red = _byte(pixel.r);
+  final green = _byte(pixel.g);
+  final blue = _byte(pixel.b);
+  final brightest = math.max(red, math.max(green, blue));
+  final darkest = math.min(red, math.min(green, blue));
+  final coloredElement = brightest > 90 && brightest - darkest >= 25;
+  final serverBay =
+      brightest > 145 &&
+      darkest > 105 &&
+      x >= width * .17 &&
+      x <= width * .76 &&
+      y >= height * .25 &&
+      y <= height * .78;
+  return coloredElement || serverBay;
+}
+
+int _byte(num value) => value.round().clamp(0, 255).toInt();
+
+class _Bounds {
+  const _Bounds(this.left, this.top, this.right, this.bottom);
+
+  final int left;
+  final int top;
+  final int right;
+  final int bottom;
+
+  int get width => right - left + 1;
+  int get height => bottom - top + 1;
+  double get centerX => (left + right + 1) / 2;
+  double get centerY => (top + bottom + 1) / 2;
+}
 
 void _writePng(Uri uri, image.Image value) =>
     _writeBytes(uri, image.encodePng(value));

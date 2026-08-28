@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:servergy/core/appearance.dart';
 import 'package:servergy/core/app_metadata.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
@@ -196,20 +198,116 @@ void main() {
     expect(line, isNot(contains('password')));
   });
 
-  test('derives the beta channel from installed package metadata', () {
+  test('derives the stable channel from installed package metadata', () {
     final metadata = AppMetadata.fromPackageInfo(
       PackageInfo(
         appName: 'servergy',
         packageName: 'dev.servergy.servergy',
-        version: '0.1.0-beta.1',
-        buildNumber: '3',
+        version: '0.1.0',
+        buildNumber: '4',
       ),
     );
 
     expect(metadata.name, 'Servergy');
-    expect(metadata.releaseChannel, 'Beta');
-    expect(metadata.versionLabel, '0.1.0-beta.1 (Build 3)');
+    expect(metadata.releaseChannel, 'Stabil');
+    expect(metadata.versionLabel, '0.1.0 (Build 4)');
     expect(metadata.supportText, contains('Plattform:'));
     expect(metadata.supportText, isNot(contains('192.168.')));
   });
+
+  test(
+    'falls back to system mode for missing or invalid appearance values',
+    () {
+      expect(
+        AppearancePreference.fromStorage(null),
+        AppearancePreference.system,
+      );
+      expect(
+        AppearancePreference.fromStorage('unexpected'),
+        AppearancePreference.system,
+      );
+      expect(
+        AppearancePreference.fromStorage('light'),
+        AppearancePreference.light,
+      );
+      expect(
+        AppearancePreference.fromStorage('dark'),
+        AppearancePreference.dark,
+      );
+    },
+  );
+
+  test('appearance controller loads and persists the selected mode', () async {
+    final store = _MemoryAppearanceStore(AppearancePreference.dark);
+    final container = ProviderContainer(
+      overrides: [appearanceStoreProvider.overrideWithValue(store)],
+    );
+    addTearDown(container.dispose);
+
+    container.read(appearanceProvider);
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      container.read(appearanceProvider).preference,
+      AppearancePreference.dark,
+    );
+
+    await container
+        .read(appearanceProvider.notifier)
+        .select(AppearancePreference.light);
+    expect(store.saved, AppearancePreference.light);
+    expect(
+      container.read(appearanceProvider).preference,
+      AppearancePreference.light,
+    );
+
+    final restoredContainer = ProviderContainer(
+      overrides: [appearanceStoreProvider.overrideWithValue(store)],
+    );
+    addTearDown(restoredContainer.dispose);
+    restoredContainer.read(appearanceProvider);
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      restoredContainer.read(appearanceProvider).preference,
+      AppearancePreference.light,
+    );
+  });
+
+  test(
+    'appearance controller restores the previous mode after save failure',
+    () async {
+      final store = _MemoryAppearanceStore(AppearancePreference.system)
+        ..failSave = true;
+      final container = ProviderContainer(
+        overrides: [appearanceStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(appearanceProvider.notifier)
+          .select(AppearancePreference.dark);
+
+      final state = container.read(appearanceProvider);
+      expect(state.preference, AppearancePreference.system);
+      expect(state.saving, isFalse);
+      expect(state.error, 'Darstellung konnte nicht gespeichert werden.');
+    },
+  );
+}
+
+class _MemoryAppearanceStore implements AppearanceStore {
+  _MemoryAppearanceStore([this.preference = AppearancePreference.system]);
+
+  AppearancePreference preference;
+  AppearancePreference? saved;
+  bool failSave = false;
+
+  @override
+  Future<AppearancePreference> load() async => preference;
+
+  @override
+  Future<void> save(AppearancePreference value) async {
+    if (failSave) throw StateError('write failed');
+    saved = value;
+    preference = value;
+  }
 }

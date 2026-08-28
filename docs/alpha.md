@@ -3,7 +3,8 @@
 ## Kennzeichnung
 
 Dieser Stand dokumentiert die abgeschlossene Alpha-Phase. Der aktuelle
-Release-Prozess und die verbindliche Abnahme stehen in [beta.md](beta.md).
+Release-Prozess und die verbindliche Abnahme stehen in
+[release-readiness.md](release-readiness.md).
 
 ## Am Alpha-Abschluss bereits umgesetzt
 
@@ -30,7 +31,7 @@ Release-Prozess und die verbindliche Abnahme stehen in [beta.md](beta.md).
 - Der dokumentierte Shutdown-Helper setzt systemd auf dem Server voraus.
 - Android-Emulatoren ersetzen keinen echten WOL-LAN-Test im Heimnetz.
 - Release-Signierung, finale Icons und öffentliche Distribution wurden in die
-  Beta-Freigabe überführt.
+  stabile Freigabe überführt.
 
 ## Historische Alpha-Abnahme-Matrix
 
@@ -49,7 +50,7 @@ Release-Prozess und die verbindliche Abnahme stehen in [beta.md](beta.md).
 
 ## Aus Alpha übernommene Abnahmeziele
 
-Diese Ziele werden in der verbindlichen Beta-Abnahme weitergeführt:
+Diese Ziele werden in der verbindlichen Release-Abnahme weitergeführt:
 
 1. Analyse und Unit-/Widgettests grün sind.
 2. Android auf einem echten API-31+-Gerät installiert und getestet wurde.

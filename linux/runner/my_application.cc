@@ -52,7 +52,7 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "Servergy");
   }
 
-  // Resolves the hicolor icon registered by the user-local beta installer.
+  // Resolves the hicolor icon registered by the user-local installer.
   gtk_window_set_icon_name(window, APPLICATION_ID);
 
   gtk_window_set_default_size(window, 1280, 720);

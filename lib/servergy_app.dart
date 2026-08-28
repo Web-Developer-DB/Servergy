@@ -11,23 +11,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'core/appearance.dart';
 import 'core/app_metadata.dart';
 import 'core/controller.dart';
 import 'core/models.dart';
 
-class ServergyApp extends StatelessWidget {
+class ServergyApp extends ConsumerWidget {
   const ServergyApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Servergy',
-    debugShowCheckedModeBanner: false,
-    theme: _theme(Brightness.light),
-    darkTheme: _theme(Brightness.dark),
-    themeMode: ThemeMode.system,
-    home: const HomeScreen(),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appearance = ref.watch(appearanceProvider);
+    return MaterialApp(
+      title: 'Servergy',
+      debugShowCheckedModeBanner: false,
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
+      themeMode: _themeMode(appearance.preference),
+      home: const HomeScreen(),
+    );
+  }
 }
+
+ThemeMode _themeMode(AppearancePreference preference) => switch (preference) {
+  AppearancePreference.system => ThemeMode.system,
+  AppearancePreference.light => ThemeMode.light,
+  AppearancePreference.dark => ThemeMode.dark,
+};
 
 ThemeData _theme(Brightness brightness) {
   const navy = Color(0xff092a3d);
@@ -837,7 +847,16 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AppearanceState>(appearanceProvider, (_, next) {
+      final error = next.error;
+      if (error == null || !context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      ref.read(appearanceProvider.notifier).clearError();
+    });
     final state = ref.watch(controllerProvider);
+    final appearance = ref.watch(appearanceProvider);
     final profile = state.profile;
     final controller = ref.read(controllerProvider.notifier);
     return Scaffold(
@@ -848,6 +867,20 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeading(
             title: 'Dein Servergy',
             subtitle: 'Verbindung, Steuerung und Produktinformationen.',
+          ),
+          const SizedBox(height: 20),
+          _SettingsGroup(
+            title: 'Darstellung',
+            children: [
+              ListTile(
+                key: const ValueKey('appearance-setting'),
+                leading: Icon(_appearanceIcon(appearance.preference)),
+                title: const Text('Darstellung'),
+                subtitle: Text(_appearanceLabel(appearance.preference)),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showAppearancePicker(context, ref),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           if (profile == null) ...[
@@ -929,7 +962,7 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.bug_report_outlined),
-                title: const Text('Beta-Feedback geben'),
+                title: const Text('Feedback geben'),
                 subtitle: const Text(
                   'Öffnet die Servergy-Issue-Vorlagen auf GitHub',
                 ),
@@ -977,6 +1010,50 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+String _appearanceLabel(AppearancePreference preference) =>
+    switch (preference) {
+      AppearancePreference.system => 'Systemstandard',
+      AppearancePreference.light => 'Hell',
+      AppearancePreference.dark => 'Dunkel',
+    };
+
+IconData _appearanceIcon(AppearancePreference preference) =>
+    switch (preference) {
+      AppearancePreference.system => Icons.brightness_auto_outlined,
+      AppearancePreference.light => Icons.light_mode_outlined,
+      AppearancePreference.dark => Icons.dark_mode_outlined,
+    };
+
+Future<void> _showAppearancePicker(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(appearanceProvider).preference;
+  final selected = await showDialog<AppearancePreference>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: const Text('Darstellung'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final preference in AppearancePreference.values)
+              RadioListTile<AppearancePreference>(
+                value: preference,
+                groupValue: current,
+                selected: preference == current,
+                secondary: Icon(_appearanceIcon(preference)),
+                title: Text(_appearanceLabel(preference)),
+                onChanged: (value) {
+                  if (value != null) Navigator.pop(dialog, value);
+                },
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (selected == null || !context.mounted) return;
+  await ref.read(appearanceProvider.notifier).select(selected);
+}
+
 final _feedbackUri = Uri.parse(
   'https://github.com/Web-Developer-DB/Servergy/issues/new/choose',
 );
@@ -986,7 +1063,7 @@ Future<void> _showFeedbackNotice(BuildContext context) async {
     context: context,
     builder: (dialog) => AlertDialog(
       icon: const Icon(Icons.privacy_tip_outlined),
-      title: const Text('Beta-Feedback sicher senden'),
+      title: const Text('Feedback sicher senden'),
       content: const Text(
         'GitHub wird in deinem Browser geöffnet. Reiche keine Passwörter, privaten Schlüssel, vollständigen IP-Adressen oder MAC-Adressen ein. Ein Diagnoseexport ist bereits redigiert und kann bei Bedarf bewusst angehängt werden.',
       ),
@@ -2429,32 +2506,100 @@ class _ServergyMarkPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final scale = size.width / 34;
     final background = Paint()..color = const Color(0xff092a3d);
-    final surface = Paint()..color = const Color(0xfff6f8fb);
-    final green = Paint()..color = const Color(0xff4ee29a);
-    final cyan = Paint()..color = const Color(0xff75d6f4);
+    final surface = Paint()..color = const Color(0xffd8d8d5);
+    final green = Paint()..color = const Color(0xff00f07a);
+    final cyan = Paint()..color = const Color(0xff06bdf4);
+    final navy = Paint()..color = const Color(0xff06293b);
     canvas.drawRRect(
       RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(9 * scale)),
       background,
     );
-    for (final top in [7.5, 14.5, 21.5]) {
+
+    final flow = Paint()
+      ..color = const Color(0xff00f07a)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.6 * scale
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromLTWH(4.1 * scale, 4.3 * scale, 24.2 * scale, 24.2 * scale),
+      .78,
+      math.pi * 1.43,
+      false,
+      flow,
+    );
+    final upArrow = Path()
+      ..moveTo(22.5 * scale, 5.6 * scale)
+      ..lineTo(27.1 * scale, 10.2 * scale)
+      ..quadraticBezierTo(
+        27.6 * scale,
+        10.8 * scale,
+        26.7 * scale,
+        10.8 * scale,
+      )
+      ..lineTo(25.5 * scale, 10.8 * scale)
+      ..lineTo(25.5 * scale, 15.4 * scale)
+      ..quadraticBezierTo(
+        25.5 * scale,
+        16.4 * scale,
+        24.5 * scale,
+        16.4 * scale,
+      )
+      ..lineTo(23.2 * scale, 16.4 * scale)
+      ..quadraticBezierTo(
+        22.3 * scale,
+        16.4 * scale,
+        22.3 * scale,
+        15.4 * scale,
+      )
+      ..lineTo(22.3 * scale, 10.8 * scale)
+      ..lineTo(21.2 * scale, 10.8 * scale)
+      ..quadraticBezierTo(20.4 * scale, 10.8 * scale, 21 * scale, 10.2 * scale)
+      ..close();
+    canvas.drawPath(upArrow, green);
+
+    for (final top in [12.1, 16.1, 20.1]) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(7 * scale, top * scale, 20 * scale, 5 * scale),
-          Radius.circular(1.7 * scale),
+          Rect.fromLTWH(10.1 * scale, top * scale, 11.6 * scale, 2.8 * scale),
+          Radius.circular(.7 * scale),
         ),
         surface,
       );
       canvas.drawCircle(
-        Offset(22 * scale, (top + 2.5) * scale),
-        1 * scale,
-        green,
+        Offset(12.2 * scale, (top + 1.4) * scale),
+        1.1 * scale,
+        navy,
       );
       canvas.drawCircle(
-        Offset(24.5 * scale, (top + 2.5) * scale),
-        1 * scale,
-        cyan,
+        Offset(12.2 * scale, (top + 1.4) * scale),
+        .72 * scale,
+        green,
       );
     }
+
+    final downArrow = Path()
+      ..moveTo(24.1 * scale, 18.8 * scale)
+      ..lineTo(28.1 * scale, 18.8 * scale)
+      ..lineTo(27.3 * scale, 23.2 * scale)
+      ..lineTo(29.7 * scale, 23.2 * scale)
+      ..quadraticBezierTo(
+        30.4 * scale,
+        23.2 * scale,
+        29.9 * scale,
+        23.9 * scale,
+      )
+      ..lineTo(26.4 * scale, 27.5 * scale)
+      ..quadraticBezierTo(25.9 * scale, 28 * scale, 25.4 * scale, 27.5 * scale)
+      ..lineTo(21.9 * scale, 23.9 * scale)
+      ..quadraticBezierTo(
+        21.4 * scale,
+        23.2 * scale,
+        22.2 * scale,
+        23.2 * scale,
+      )
+      ..lineTo(24.4 * scale, 23.2 * scale)
+      ..close();
+    canvas.drawPath(downArrow, cyan);
   }
 
   @override

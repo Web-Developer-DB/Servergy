@@ -1,4 +1,7 @@
-# Beta-Status und Freigabe
+# Archiv: Beta-Status und Freigabe
+
+Die Beta-Abnahme ist historisch dokumentiert. Die aktuellen Kriterien für den
+stabilen Release stehen in [release-readiness.md](release-readiness.md).
 
 ## Kennzeichnung
 

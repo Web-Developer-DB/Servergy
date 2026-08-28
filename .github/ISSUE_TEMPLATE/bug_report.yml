@@ -1,19 +1,19 @@
-name: Beta-Fehler melden
+name: Fehler melden
 description: Hilf uns, einen Fehler in Servergy reproduzierbar zu beheben.
-title: "[Beta]: "
-labels: ["beta-feedback", "bug"]
+title: "[Bug]: "
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Danke für deinen Beta-Test. Bitte **niemals** Passwörter, private Schlüssel,
+        Danke für deinen Bericht. Bitte **niemals** Passwörter, private Schlüssel,
         vollständige IP-Adressen, MAC-Adressen oder Screenshots mit solchen Daten einreichen.
   - type: input
     id: version
     attributes:
       label: Servergy-Version
       description: Unter Einstellungen → Über Servergy.
-      placeholder: 0.1.0-beta.1 (Build 3)
+      placeholder: 0.1.0 (Build 4)
     validations:
       required: true
   - type: dropdown

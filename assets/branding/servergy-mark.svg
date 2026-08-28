@@ -1,21 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
   <title id="title">Servergy</title>
-  <description id="description">Eine stilisierte, sichere Homeserver-Verbindung</description>
-  <rect x="32" y="32" width="960" height="960" rx="232" fill="#092A3D"/>
-  <g fill="#F6F8FB">
-    <rect x="224" y="250" width="576" height="144" rx="44"/>
-    <rect x="224" y="440" width="576" height="144" rx="44"/>
-    <rect x="224" y="630" width="576" height="144" rx="44"/>
+  <description id="description">Homeserver mit Start- und Herunterfahren-Symbolen</description>
+  <rect x="32" y="32" width="960" height="960" rx="250" fill="#06293B"/>
+
+  <!-- Green clockwise flow, ending at the start arrow. -->
+  <path fill="#00F07A" d="M558 206C324 181 151 351 151 581c0 238 193 331 422 259l-57-73c-163 51-286-57-286-216 0-153 118-258 307-259l21-86Z"/>
+  <path fill="#00F07A" d="M711 181c8-8 20-8 28 0l106 106c14 14 4 38-16 38h-35v96c0 38 10 74 31 106h-89c-20-33-30-69-30-106v-96h-35c-20 0-30-24-16-38l56-56Z"/>
+
+  <!-- Three server bays and their active status LEDs. -->
+  <g fill="#D8D8D5">
+    <rect x="333" y="392" width="340" height="74" rx="16"/>
+    <rect x="333" y="490" width="340" height="74" rx="16"/>
+    <rect x="333" y="588" width="340" height="74" rx="16"/>
   </g>
-  <g fill="#092A3D">
-    <rect x="302" y="303" width="244" height="22" rx="11"/>
-    <rect x="302" y="493" width="244" height="22" rx="11"/>
-    <rect x="302" y="683" width="244" height="22" rx="11"/>
+  <g fill="#00F07A" stroke="#06293B" stroke-width="13">
+    <circle cx="377" cy="429" r="20"/>
+    <circle cx="377" cy="527" r="20"/>
+    <circle cx="377" cy="625" r="20"/>
   </g>
-  <circle cx="666" cy="322" r="28" fill="#4EE29A"/>
-  <circle cx="732" cy="322" r="28" fill="#75D6F4"/>
-  <circle cx="666" cy="512" r="28" fill="#4EE29A"/>
-  <circle cx="732" cy="512" r="28" fill="#75D6F4"/>
-  <circle cx="666" cy="702" r="28" fill="#4EE29A"/>
-  <circle cx="732" cy="702" r="28" fill="#75D6F4"/>
+
+  <!-- Blue downward flow for safe shutdown. -->
+  <path fill="#06BDF4" d="M790 519h80c15 0 25 13 22 28l-24 111v46h51c21 0 31 25 16 40l-94 94c-9 9-23 9-32 0l-94-94c-15-15-5-40 16-40h51v-46l-24-111c-3-15 7-28 22-28Z"/>
 </svg>

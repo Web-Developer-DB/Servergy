@@ -13,11 +13,11 @@
   <a href="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml">
     <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=Dev" alt="Qualitätsprüfung" />
   </a>
-  <a href="docs/beta.md">
-    <img src="https://img.shields.io/badge/Status-Beta-F59E0B?style=flat-square" alt="Status: Beta" />
+  <a href="docs/release-readiness.md">
+    <img src="https://img.shields.io/badge/Status-Stabil-0B7A43?style=flat-square" alt="Status: Stabil" />
   </a>
   <a href="https://github.com/Web-Developer-DB/Servergy/releases">
-    <img src="https://img.shields.io/badge/Version-0.1.0--beta.1-0F4C81?style=flat-square" alt="Version 0.1.0-beta.1" />
+    <img src="https://img.shields.io/badge/Version-0.1.0-0F4C81?style=flat-square" alt="Version 0.1.0" />
   </a>
   <a href="docs/privacy.md">
     <img src="https://img.shields.io/badge/Datenschutz-lokal%20%26%20ohne%20Telemetrie-0B7A43?style=flat-square" alt="Lokale Datenverarbeitung ohne Telemetrie" />
@@ -31,15 +31,15 @@
   <a href="#-auf-einen-blick">Überblick</a> ·
   <a href="#-erste-schritte">Erste Schritte</a> ·
   <a href="#-sicherheit-als-standard">Sicherheit</a> ·
-  <a href="#-beta-und-qualität">Beta</a> ·
+  <a href="#-qualität-und-release">Qualität &amp; Release</a> ·
   <a href="#-dokumentation">Dokumentation</a>
 </p>
 
 > [!IMPORTANT]
-> **Servergy befindet sich in der Beta-Phase.** Die App ist für kontrollierte
-> Tests mit einem eigenen Homeserver gedacht. Vor einem öffentlichen Beta-Tag
-> müssen die Realtests, Signaturen und Freigabekriterien in
-> [docs/beta.md](docs/beta.md) erfüllt sein.
+> **Servergy 0.1.0 ist der erste stabile Release.** Die App ist für einen
+> eigenen Homeserver gedacht. Vor jeder Veröffentlichung müssen die Realtests,
+> Signaturen und Freigabekriterien in
+> [docs/release-readiness.md](docs/release-readiness.md) erfüllt sein.
 
 ## ✨ Auf einen Blick
 
@@ -64,7 +64,24 @@ im Vordergrund und verbindet sich nur mit dem Homeserver, den du einrichtest.
 | ⚡ **Wake-on-LAN** | Sendet Wake-on-LAN und prüft anschließend, ob der SSH-Port wieder erreichbar wird. | Ein ausgeschalteter Server kann bequem gestartet werden. |
 | ⏻ **Sicher herunterfahren** | Nutzt einen eingeschränkten, root-eigenen Servergy-Helper mit einer festen systemd-Unit. | Kein allgemeines `sudo`, keine frei wählbaren Fernbefehle. |
 | 🧾 **Ereignisse** | Hält ein lokales, begrenztes und redigiertes Aktivitätsprotokoll bereit. | Hilfreiche Diagnose ohne Profil- oder Netzwerkdaten im Export. |
-| 🎨 **Plattformgerecht** | Helle und dunkle Material-3-Oberfläche, große Interaktionsflächen sowie native Launcher- und Startmenü-Icons. | Eine ruhige, verständliche Bedienung auf Android, Linux und Windows. |
+| 🎨 **Plattformgerecht** | Systemstandard sowie helle oder dunkle Material-3-Oberfläche, große Interaktionsflächen und native Launcher- und Startmenü-Icons. | Eine ruhige, verständliche Bedienung auf Android, Linux und Windows. |
+
+### 🎨 Marke und App-Icons
+
+Das Servergy-Symbol verbindet den Homeserver mit den beiden klaren Aktionen:
+grün steht für Start bzw. Erreichbarkeit, blau für das sichere Herunterfahren.
+Die Wortmarke wird für GitHub, Website und Fenstertitel verwendet; Launcher
+bleiben auf dem quadratischen Symbol ohne Text.
+
+| Plattform | Auslieferung | Varianten |
+| --- | --- | --- |
+| 🤖 Android | Adaptive Launcher-Ressource | Vollfarbe, Vordergrund und Monochrom für moderne Launcher |
+| 🪟 Windows | `app_icon.ico` | Mehrgrößiges Icon bis 256 px für Fenster und Startmenü |
+| 🐧 Ubuntu/Linux | Hicolor-Theme | PNGs von 16 bis 512 px plus skalierbares SVG |
+
+Alle Varianten werden aus der freigegebenen Vorlage mit
+[`tool/generate_launcher_icons.dart`](tool/generate_launcher_icons.dart)
+reproduzierbar erzeugt.
 
 ## 🗺️ So funktioniert der Ablauf
 
@@ -82,13 +99,13 @@ den Ereignissen und Einstellungen erreichbar.
 
 ## 🚀 Erste Schritte
 
-### Für Beta-Tester
+### Für Anwender
 
-Beta-Artefakte erscheinen als signierte GitHub-Pre-Releases mit
+Release-Artefakte erscheinen als signierte GitHub-Releases mit
 SHA-256-Prüfsummen. Prüfe immer die Release-Notizen und die Prüfsumme, bevor du
 ein Artefakt installierst.
 
-| Plattform | Beta-Artefakt | Start |
+| Plattform | Release-Artefakt | Start |
 | --- | --- | --- |
 | 🤖 **Android 12+** | Signiertes APK | APK aus dem GitHub-Release installieren und die lokale Netzwerkfreigabe bei Bedarf bewusst erlauben. |
 | 🐧 **Linux** | Nutzer-Bundle (`.tar.gz`) | Archiv entpacken, `./install-linux.sh` ausführen und Servergy anschließend über das Anwendungsmenü starten. Die Installation bleibt unter `~/.local/share/servergy`. |
@@ -183,12 +200,12 @@ Entfernung stehen in der [Serveranleitung](docs/server-setup.md).
 | 🐧 **Shutdown-Helper** | Der dokumentierte komfortable Setup-Weg setzt Debian/Ubuntu mit systemd voraus. |
 | 📱 **Android 17** | Lokale Netzwerkaktionen benötigen die vom System abgefragte Freigabe; ohne sie bleiben manuelle VPN-Konfigurationen möglich. |
 
-## 🧪 Beta und Qualität
+## 🧪 Qualität und Release
 
-Die Beta trennt automatisierbare Prüfungen klar von den unverzichtbaren Tests
-in echter Hardware und echten Heimnetzen.
+Der stabile Release trennt automatisierbare Prüfungen klar von den
+unverzichtbaren Tests in echter Hardware und echten Heimnetzen.
 
-| Prüfung | Automatisiert | Vor Beta-Release zusätzlich nötig |
+| Prüfung | Automatisiert | Vor dem Release zusätzlich nötig |
 | --- | :---: | --- |
 | Formatierung, statische Analyse und Tests | ✅ | — |
 | Android-, Linux- und Windows-Debug-Build | ✅ | Sichtprüfung auf Zielgeräten |
@@ -197,19 +214,20 @@ in echter Hardware und echten Heimnetzen.
 | WOL, SSH, Shutdown und VPN | — | ✅ Mit einem echten Homeserver dokumentieren |
 | Datenschutz und Diagnoseexport | Teilweise | ✅ Export vor dem Senden kontrollieren |
 
-Die verbindliche Testmatrix, Release-Entscheidung und der Umgang mit
-Beta-Feedback sind in [docs/beta.md](docs/beta.md) dokumentiert.
+Die verbindliche Testmatrix und Release-Entscheidung stehen in
+[docs/release-readiness.md](docs/release-readiness.md); die frühere
+[Beta-Dokumentation](docs/beta.md) bleibt als Archiv erhalten.
 
 ## 💬 Feedback und Fehler melden
 
-Beta-Feedback hilft besonders bei echten Netzwerk-, Router-, VPN- und
-Wake-on-LAN-Konstellationen. In der App führt **Einstellungen → Beta-Feedback
-geben** direkt zu den GitHub-Issue-Vorlagen.
+Rückmeldungen helfen besonders bei echten Netzwerk-, Router-, VPN- und
+Wake-on-LAN-Konstellationen. In der App führt **Einstellungen → Feedback geben**
+direkt zu den GitHub-Issue-Vorlagen.
 
 | Melden | Vorlage | Bitte nicht einreichen |
 | --- | --- | --- |
-| 🐛 Reproduzierbarer Fehler | [Beta-Fehler melden](https://github.com/Web-Developer-DB/Servergy/issues/new?template=bug_report.yml) | Passwörter, private Schlüssel, vollständige IP-Adressen, MAC-Adressen oder ungeschwärzte Screenshots |
-| 💡 Bedienbarkeit oder Wunsch | [Beta-Feedback geben](https://github.com/Web-Developer-DB/Servergy/issues/new?template=beta_feedback.yml) | Zugangsdaten oder nicht bewusst kontrollierte Diagnoseinhalte |
+| 🐛 Reproduzierbarer Fehler | [Fehler melden](https://github.com/Web-Developer-DB/Servergy/issues/new?template=bug_report.yml) | Passwörter, private Schlüssel, vollständige IP-Adressen, MAC-Adressen oder ungeschwärzte Screenshots |
+| 💡 Bedienbarkeit oder Wunsch | [Feedback geben](https://github.com/Web-Developer-DB/Servergy/issues/new?template=feedback.yml) | Zugangsdaten oder nicht bewusst kontrollierte Diagnoseinhalte |
 
 Ein Diagnoseexport ist optional und bereits redigiert. Lies ihn trotzdem vor
 dem Hochladen noch einmal durch.
@@ -218,17 +236,17 @@ dem Hochladen noch einmal durch.
 
 | Dokument | Inhalt |
 | --- | --- |
-| [Beta-Status & Freigabe](docs/beta.md) | Realtest-Matrix, Signaturen, Release-Gates und Feedback-Regeln |
+| [Release-Readiness](docs/release-readiness.md) | Realtest-Matrix, Signaturen, Release-Gates und Feedback-Regeln |
 | [Serveranleitung](docs/server-setup.md) | Wake-on-LAN, SSH-Benutzer, eingeschränkter sudoers-Helper und manueller Fallback |
 | [Architektur](docs/architecture.md) | Datenfluss, Komponenten, Grenzen und Sicherheitsentscheidungen |
 | [Entwicklung & Tests](docs/development.md) | Lokale Entwicklungsumgebung, Builds, Qualität und Realgeräte-Tests |
 | [Datenschutz](docs/privacy.md) | Lokale Datenverarbeitung und redigierte Diagnoseexporte |
-| [Release-Checkliste](docs/release-checklist.md) | Letzte Prüfungen vor einem Beta-Tag |
+| [Release-Checkliste](docs/release-checklist.md) | Letzte Prüfungen vor einem stabilen oder vorab gekennzeichneten Release |
 
 ## 🤝 Mitwirken
 
-`Dev` ist der Integrationsbranch für die Beta-Entwicklung; `main` bleibt der
-stabile Zielbranch für spätere stabile Releases.
+`Dev` ist der Integrationsbranch für die Entwicklung; `main` bleibt der
+stabile Zielbranch für veröffentlichte Releases.
 
 Bevor du einen Pull Request öffnest:
 
