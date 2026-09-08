@@ -26,7 +26,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  // Match the focused mobile-first viewport used by the Linux runner.
+  Win32Window::Size size(480, 860);
   if (!window.Create(L"servergy", origin, size)) {
     return EXIT_FAILURE;
   }
