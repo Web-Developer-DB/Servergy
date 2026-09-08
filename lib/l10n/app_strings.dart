@@ -115,6 +115,8 @@ const _english = <String, String>{
   'Vertrauen': 'Trust',
   'Passphrase für SSH-Schlüssel': 'SSH key passphrase',
   'SSH-Passwort': 'SSH password',
+  'Passwort anzeigen': 'Show password',
+  'Passwort verbergen': 'Hide password',
   'Geheimnis': 'Secret',
   'Fortfahren': 'Continue',
   'Einmaliges sudo-Passwort': 'One-time sudo password',

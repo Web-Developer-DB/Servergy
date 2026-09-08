@@ -108,6 +108,80 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('password setup uses a clear, accessible reveal control', (
+    tester,
+  ) async {
+    _setViewport(tester, const Size(400, 900));
+    await tester.pumpWidget(
+      _setup(
+        profile: const ServerProfile(
+          name: 'Homeserver',
+          host: '192.168.0.241',
+          sshPort: 22,
+          username: 'servergy',
+          authenticationMode: AuthenticationMode.passwordOnly,
+        ),
+        initialStep: 2,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_editableField(tester, 'SSH-Passwort').obscureText, isTrue);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('field-container-SSH-Passwort')),
+        matching: find.byIcon(Icons.password_outlined),
+      ),
+      findsNothing,
+    );
+    expect(find.byTooltip('Passwort anzeigen'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('password-visibility-SSH-Passwort')),
+    );
+    await tester.pump();
+
+    expect(_editableField(tester, 'SSH-Passwort').obscureText, isFalse);
+    expect(find.byTooltip('Passwort verbergen'), findsOneWidget);
+  });
+
+  testWidgets('secret dialog inputs start hidden and can be revealed', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SecretTextField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Geheimnis'),
+            visibilityToggleKey: const ValueKey(
+              'credential-password-visibility',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).obscureText,
+      isTrue,
+    );
+    expect(find.byTooltip('Passwort anzeigen'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('credential-password-visibility')),
+    );
+    await tester.pump();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).obscureText,
+      isFalse,
+    );
+    expect(find.byTooltip('Passwort verbergen'), findsOneWidget);
+  });
+
   testWidgets('setup uses one focused step with visible progress', (
     tester,
   ) async {
@@ -499,6 +573,13 @@ void _setViewport(WidgetTester tester, Size size, {double textScale = 1}) {
 
 TextFormField _field(WidgetTester tester, String label) =>
     tester.widget(find.byKey(ValueKey('field-$label')));
+
+EditableText _editableField(WidgetTester tester, String label) => tester.widget(
+  find.descendant(
+    of: find.byKey(ValueKey('field-$label')),
+    matching: find.byType(EditableText),
+  ),
+);
 
 class _StaticServerController extends ServerController {
   _StaticServerController(this.profile, {ProfileStore? store})

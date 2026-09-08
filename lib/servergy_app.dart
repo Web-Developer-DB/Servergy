@@ -77,6 +77,83 @@ class Text extends StatelessWidget {
   );
 }
 
+/// A password input that keeps secrets hidden until the user explicitly
+/// chooses to reveal them for the current interaction.
+class SecretTextField extends StatefulWidget {
+  const SecretTextField({
+    required this.controller,
+    required this.decoration,
+    super.key,
+    this.autofocus = false,
+    this.textInputAction,
+    this.onSubmitted,
+    this.visibilityToggleKey,
+  });
+
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final bool autofocus;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final Key? visibilityToggleKey;
+
+  @override
+  State<SecretTextField> createState() => _SecretTextFieldState();
+}
+
+class _SecretTextFieldState extends State<SecretTextField> {
+  var _obscured = true;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: widget.controller,
+    autofocus: widget.autofocus,
+    obscureText: _obscured,
+    enableSuggestions: false,
+    autocorrect: false,
+    textInputAction: widget.textInputAction,
+    onSubmitted: widget.onSubmitted,
+    decoration: widget.decoration.copyWith(
+      suffixIcon: _PasswordVisibilityButton(
+        obscured: _obscured,
+        toggleKey: widget.visibilityToggleKey,
+        onPressed: () => setState(() => _obscured = !_obscured),
+      ),
+    ),
+  );
+}
+
+class _PasswordVisibilityButton extends StatelessWidget {
+  const _PasswordVisibilityButton({
+    required this.obscured,
+    required this.onPressed,
+    this.toggleKey,
+  });
+
+  final bool obscured;
+  final VoidCallback onPressed;
+  final Key? toggleKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = context.tr(
+      obscured ? 'Passwort anzeigen' : 'Passwort verbergen',
+    );
+    return Semantics(
+      button: true,
+      label: label,
+      child: IconButton(
+        key: toggleKey,
+        tooltip: label,
+        onPressed: onPressed,
+        icon: Icon(
+          obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+        ),
+      ),
+    );
+  }
+}
+
 class ServergyApp extends ConsumerWidget {
   const ServergyApp({super.key});
 
@@ -849,13 +926,11 @@ Future<SshCredentials?> _askCredentials(
             ? 'Passphrase für SSH-Schlüssel'
             : 'SSH-Passwort',
       ),
-      content: TextField(
+      content: SecretTextField(
         controller: input,
         autofocus: true,
-        obscureText: true,
-        enableSuggestions: false,
-        autocorrect: false,
         decoration: InputDecoration(labelText: context.tr('Geheimnis')),
+        visibilityToggleKey: const ValueKey('credential-password-visibility'),
       ),
       actions: [
         TextButton(
@@ -884,12 +959,9 @@ Future<String?> _askSudoPassword(BuildContext context) async {
     builder: (dialog) => AlertDialog(
       icon: const Icon(Icons.admin_panel_settings_outlined),
       title: const Text('Einmaliges sudo-Passwort'),
-      content: TextField(
+      content: SecretTextField(
         controller: input,
         autofocus: true,
-        obscureText: true,
-        enableSuggestions: false,
-        autocorrect: false,
         textInputAction: TextInputAction.done,
         onSubmitted: (value) => Navigator.pop(dialog, value),
         decoration: InputDecoration(
@@ -898,6 +970,7 @@ Future<String?> _askSudoPassword(BuildContext context) async {
             'Wird nur für diese Servervorbereitung verwendet.',
           ),
         ),
+        visibilityToggleKey: const ValueKey('sudo-password-visibility'),
       ),
       actions: [
         TextButton(
@@ -1446,6 +1519,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   // step and are opened from the dedicated settings overview.
   var _furthestUnlockedStep = 0;
   var _mode = AuthenticationMode.keyPreferred;
+  var _passwordObscured = true;
   var _configureWake = false;
   var _connectionVerified = false;
   String? _keyPem;
@@ -1709,13 +1783,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         subtitle: const Text(
           'Das Passwort wird nach dem Speichern sicher auf diesem Gerät hinterlegt.',
         ),
-        secondary: const Icon(Icons.password_outlined),
       ),
       if (_mode == AuthenticationMode.passwordOnly)
         _field(
           _password,
           'SSH-Passwort',
-          Icons.password_outlined,
+          null,
           obscureText: true,
           helperText: context.tr(
             'Leer: vorhandenes gespeichertes Passwort beibehalten.',
@@ -1993,7 +2066,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Widget _field(
     TextEditingController controller,
     String label,
-    IconData icon, {
+    IconData? icon, {
     bool number = false,
     bool obscureText = false,
     String? helperText,
@@ -2030,20 +2103,22 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3),
-                    child: Icon(
-                      icon,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  if (icon != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Icon(
+                        icon,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
+                    const SizedBox(width: 14),
+                  ],
                   Expanded(
                     child: TextFormField(
                       key: ValueKey('field-$label'),
                       controller: controller,
                       keyboardType: number ? TextInputType.number : null,
-                      obscureText: obscureText,
+                      obscureText: obscureText && _passwordObscured,
                       enableSuggestions: !obscureText,
                       autocorrect: !obscureText,
                       textAlignVertical: TextAlignVertical.center,
@@ -2060,13 +2135,24 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                             ? _requiredFieldLabel(context, label)
                             : null;
                       },
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
                         filled: false,
                         contentPadding: EdgeInsets.zero,
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
+                        suffixIcon: obscureText
+                            ? _PasswordVisibilityButton(
+                                obscured: _passwordObscured,
+                                toggleKey: ValueKey(
+                                  'password-visibility-$label',
+                                ),
+                                onPressed: () => setState(
+                                  () => _passwordObscured = !_passwordObscured,
+                                ),
+                              )
+                            : null,
                       ),
                     ),
                   ),

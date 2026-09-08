@@ -55,7 +55,8 @@ static void my_application_activate(GApplication* application) {
   // Resolves the hicolor icon registered by the user-local installer.
   gtk_window_set_icon_name(window, APPLICATION_ID);
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // Start as a focused, phone-like control surface; users can still resize it.
+  gtk_window_set_default_size(window, 480, 860);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
