@@ -57,8 +57,7 @@ oder über eine umfangreiche Verwaltungsoberfläche betreut werden muss.
 ## 📱 Die App auf einen Blick
 
 <p align="center">
-  <img src="assets/screenshots/dashboard-dark.png" width="230" alt="Servergy-Dashboard im dunklen Design mit dem ausgeschalteten Homeserver und den Aktionen Server starten, SSH-Verbindung testen und Server herunterfahren" />
-  <img src="assets/screenshots/settings-dark.png" width="230" alt="Servergy-Einstellungen im dunklen Design mit Darstellung, Sprache, Serververbindung, Wake-on-LAN, sicherem Herunterfahren und Datenschutz" />
+  <img src="assets/screenshots/app-showcase.png" width="720" alt="Farbige Servergy-App-Vorschau mit dem Dashboard im dunklen Design links und den Einstellungen rechts" />
 </p>
 
 <p align="center">

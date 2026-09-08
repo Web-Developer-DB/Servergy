@@ -56,8 +56,7 @@ be managed through a complex administration interface.
 ## 📱 The app at a glance
 
 <p align="center">
-  <img src="assets/screenshots/dashboard-dark.png" width="230" alt="Servergy dark dashboard showing an offline home server and the actions Start server, Test SSH connection, and Shut down server" />
-  <img src="assets/screenshots/settings-dark.png" width="230" alt="Servergy dark settings screen with appearance, language, server connection, Wake-on-LAN, safe shutdown, and privacy controls" />
+  <img src="assets/screenshots/app-showcase.png" width="720" alt="Colourful Servergy app preview with the dark dashboard on the left and settings on the right" />
 </p>
 
 <p align="center">
