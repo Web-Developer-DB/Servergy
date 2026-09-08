@@ -5,6 +5,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 /// Product metadata comes from the installed application package so the UI
 /// never needs to maintain a second copy of the version declared in pubspec.
+/// Display-safe metadata derived from the installed package at runtime.
+///
+/// This is intentionally separate from [ServerProfile]: support information
+/// describes the application build, never the configured homeserver.
 class AppMetadata {
   static const productName = 'Servergy';
 
@@ -65,6 +69,8 @@ class AppMetadata {
   }
 }
 
+/// Lazily loads package metadata and supplies a test-safe fallback when the
+/// platform plugin is unavailable (for example in a widget test).
 final appMetadataProvider = FutureProvider<AppMetadata>((ref) async {
   try {
     return AppMetadata.fromPackageInfo(await PackageInfo.fromPlatform());

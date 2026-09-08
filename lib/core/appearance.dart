@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// The user's display preference is deliberately independent from the server
 /// profile. It contains no endpoint, credential, or diagnostic information.
+/// Persisted theme choice. `system` deliberately stores a preference rather
+/// than a resolved brightness so an OS theme change is reflected immediately.
 enum AppearancePreference {
   system,
   light,
@@ -15,6 +17,10 @@ enum AppearancePreference {
   };
 }
 
+/// Immutable view state for the appearance setting row.
+///
+/// `loaded` distinguishes the initial asynchronous read from the default
+/// value, while `saving` lets the UI prevent overlapping changes.
 class AppearanceState {
   const AppearanceState({
     this.preference = AppearancePreference.system,
@@ -42,11 +48,13 @@ class AppearanceState {
   );
 }
 
+/// Storage seam used by [AppearanceController] and in-memory test doubles.
 abstract interface class AppearanceStore {
   Future<AppearancePreference> load();
   Future<void> save(AppearancePreference preference);
 }
 
+/// Production implementation backed by one non-sensitive preferences key.
 class PreferencesAppearanceStore implements AppearanceStore {
   PreferencesAppearanceStore({SharedPreferencesAsync? preferences})
     : _preferences = preferences ?? SharedPreferencesAsync();
@@ -64,15 +72,22 @@ class PreferencesAppearanceStore implements AppearanceStore {
       _preferences.setString(key, preference.name);
 }
 
+/// Dependency-injection point. Tests override this provider instead of using
+/// device preferences.
 final appearanceStoreProvider = Provider<AppearanceStore>(
   (ref) => PreferencesAppearanceStore(),
 );
 
+/// Reactive state used by [ServergyApp] and the settings screen.
 final appearanceProvider =
     NotifierProvider<AppearanceController, AppearanceState>(
       AppearanceController.new,
     );
 
+/// Loads and persists appearance choices without touching connection state.
+///
+/// The two tokens prevent late reads/writes from overwriting a newer selection
+/// when storage operations complete out of order.
 class AppearanceController extends Notifier<AppearanceState> {
   var _selectionMade = false;
   var _saveToken = 0;
@@ -97,6 +112,7 @@ class AppearanceController extends Notifier<AppearanceState> {
     }
   }
 
+  /// Optimistically applies a new preference, then rolls back on write error.
   Future<void> select(AppearancePreference preference) async {
     final previous = state.preference;
     final token = ++_saveToken;

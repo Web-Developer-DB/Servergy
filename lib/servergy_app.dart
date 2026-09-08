@@ -21,6 +21,10 @@ import 'core/models.dart';
 import 'l10n/app_strings.dart';
 import 'l10n/generated/app_localizations.dart';
 
+// This file intentionally contains presentation and interaction orchestration
+// only. Network I/O, SSH commands, secure storage, validation, and polling
+// live in core/; widgets invoke controller methods and render immutable state.
+
 /// Keeps existing UI text localizable while migration to generated ARB
 /// accessors happens incrementally. It deliberately forwards Flutter's full
 /// text configuration so layout, semantics, and accessibility stay unchanged.
@@ -123,6 +127,8 @@ class _SecretTextFieldState extends State<SecretTextField> {
   );
 }
 
+/// Accessible reveal/hide control owned by [SecretTextField], so password
+/// inputs have identical privacy behaviour across setup and dialogs.
 class _PasswordVisibilityButton extends StatelessWidget {
   const _PasswordVisibilityButton({
     required this.obscured,
@@ -154,6 +160,9 @@ class _PasswordVisibilityButton extends StatelessWidget {
   }
 }
 
+/// Root widget: assembles localization, persisted appearance, and the single
+/// dashboard route. It deliberately does not load a server profile itself;
+/// [HomeScreen] observes the controller provider when it is first built.
 class ServergyApp extends ConsumerWidget {
   const ServergyApp({super.key});
 
@@ -176,17 +185,22 @@ class ServergyApp extends ConsumerWidget {
   }
 }
 
+/// Product policy for system mode: German system locales use German; every
+/// other locale falls back to the fully supported English translation.
 Locale resolveServergyLocale(Locale? locale, Iterable<Locale> supported) =>
     locale?.languageCode.toLowerCase() == 'de'
     ? const Locale('de')
     : const Locale('en');
 
+/// Maps the persisted domain preference to Flutter's platform-aware mode.
 ThemeMode _themeMode(AppearancePreference preference) => switch (preference) {
   AppearancePreference.system => ThemeMode.system,
   AppearancePreference.light => ThemeMode.light,
   AppearancePreference.dark => ThemeMode.dark,
 };
 
+/// Builds both Material 3 themes from the same brand palette. UI components use
+/// semantic ColorScheme colors rather than hard-coded colors after this point.
 ThemeData _theme(Brightness brightness) {
   const navy = Color(0xff092a3d);
   final dark = brightness == Brightness.dark;
@@ -277,6 +291,11 @@ ThemeData _theme(Brightness brightness) {
   );
 }
 
+/// Dashboard and stable navigation root.
+///
+/// It listens for transient controller feedback only while its own route is
+/// current; dialogs or settings therefore cannot receive a Snackbar from an
+/// inactive route during a transition.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
   @override
@@ -353,9 +372,13 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// Opens a full-screen flow while keeping the dashboard mounted underneath.
 void _open(BuildContext context, Widget screen) =>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
 
+/// Converts the controller's technical [ServerStatus] into one calm dashboard
+/// status summary. Details remain collapsed to avoid presenting a TCP probe as
+/// an overconfident health verdict.
 class _StatusCard extends ConsumerWidget {
   const _StatusCard({required this.state});
   final AppState state;
@@ -508,6 +531,7 @@ class _StatusCard extends ConsumerWidget {
   }
 }
 
+/// First-run card that starts setup only after an explicit tap.
 class _SetupCallout extends StatelessWidget {
   const _SetupCallout();
   @override
@@ -552,6 +576,10 @@ class _SetupCallout extends StatelessWidget {
   );
 }
 
+/// Contextual dashboard actions for a configured server.
+///
+/// Buttons delegate to [ServerController]; this widget never stores or prompts
+/// for a credential itself except through the shared safe dialog callbacks.
 class _Actions extends ConsumerWidget {
   const _Actions({required this.profile, required this.state});
   final ServerProfile profile;
@@ -624,6 +652,7 @@ class _Actions extends ConsumerWidget {
   }
 }
 
+/// Consistent visual label for a dashboard/settings section.
 class _SectionHeading extends StatelessWidget {
   const _SectionHeading({required this.title, required this.subtitle});
   final String title;
@@ -648,6 +677,8 @@ class _SectionHeading extends StatelessWidget {
   );
 }
 
+/// Selects a status-related event, excluding configuration/provisioning noise
+/// from the dashboard's "last checked" label.
 DiagnosticEvent? _lastRelevantEvent(List<DiagnosticEvent> events) {
   final matching = events.where(
     (event) =>
@@ -658,6 +689,7 @@ DiagnosticEvent? _lastRelevantEvent(List<DiagnosticEvent> events) {
   return matching.isEmpty ? null : matching.last;
 }
 
+/// Formats a local diagnostic timestamp compactly, preserving the app locale.
 String _formatMoment(BuildContext context, DateTime time) {
   final locale = Localizations.localeOf(context).toLanguageTag();
   final now = DateTime.now();
@@ -669,6 +701,8 @@ String _formatMoment(BuildContext context, DateTime time) {
       : '${DateFormat.MMMd(locale).format(time)}, $clock';
 }
 
+/// Requires a visible confirmation before delegating the irreversible request
+/// to the controller. A failed shutdown may offer, but never auto-run, setup.
 Future<void> _confirmShutdown(
   BuildContext context,
   ServerController controller,
@@ -706,6 +740,7 @@ Future<void> _confirmShutdown(
   }
 }
 
+/// Only known fixed-helper failures qualify for an optional setup offer.
 bool _canPrepareServer(String? code) => switch (code) {
   'poweroff_sudo_password_required' ||
   'poweroff_helper_missing' ||
@@ -816,6 +851,7 @@ Future<void> _offerHelperRemoval(
   }
 }
 
+/// The explicit choice separating guided installation from manual instructions.
 enum _PreparationChoice { install, manual }
 
 bool _needsManualPoweroffSetup(String? code) => switch (code) {
@@ -826,6 +862,8 @@ bool _needsManualPoweroffSetup(String? code) => switch (code) {
   _ => false,
 };
 
+/// Copyable fallback for operators whose server cannot use guided provisioning.
+/// `SSH-BENUTZER` is intentionally the only placeholder in this fixed recipe.
 const _manualPoweroffSetup =
     '''# Auf dem Debian-Server als Administrator ausführen.
 sudo install -o root -g root -m 0644 /dev/stdin /etc/systemd/system/servergy-poweroff.service <<'EOF'
@@ -849,6 +887,7 @@ echo 'SSH-BENUTZER ALL=(root) NOPASSWD: /usr/local/sbin/servergy-poweroff' | sud
 sudo chmod 0440 /etc/sudoers.d/servergy
 sudo visudo -cf /etc/sudoers.d/servergy''';
 
+/// Shows (and optionally copies) the static setup recipe without executing it.
 Future<void> _showManualPoweroffSetup(BuildContext context) async {
   await showDialog<void>(
     context: context,
@@ -889,6 +928,8 @@ Future<void> _showManualPoweroffSetup(BuildContext context) async {
   );
 }
 
+/// Presents the SSH host key as a non-dismissible first-contact decision.
+/// Rejecting it returns `false` to the gateway and blocks authentication.
 Future<bool> _confirmTrust(BuildContext context, String fingerprint) async =>
     await showDialog<bool>(
       context: context,
@@ -912,6 +953,8 @@ Future<bool> _confirmTrust(BuildContext context, String fingerprint) async =>
     ) ??
     false;
 
+/// Collects a secret for the current operation only. The dialog returns it to
+/// the controller; it does not put text on a route, log, or clipboard.
 Future<SshCredentials?> _askCredentials(
   BuildContext context,
   CredentialRequest request,
@@ -951,6 +994,7 @@ Future<SshCredentials?> _askCredentials(
       : SshCredentials(password: value);
 }
 
+/// Dedicated one-operation sudo prompt used only by explicit helper changes.
 Future<String?> _askSudoPassword(BuildContext context) async {
   final input = TextEditingController();
   final value = await showDialog<String>(
@@ -988,6 +1032,10 @@ Future<String?> _askSudoPassword(BuildContext context) async {
   return value == null || value.isEmpty ? null : value;
 }
 
+/// Groups configuration that is intentionally separate from the dashboard.
+///
+/// The screen observes appearance and language save failures locally, while
+/// server-operation notices remain owned by the initiating dialog or route.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -1301,6 +1349,7 @@ Future<void> _showFeedbackNotice(BuildContext context) async {
   }
 }
 
+/// Narrow settings route for the two explicit server-side helper mutations.
 class _PoweroffSettingsScreen extends StatelessWidget {
   const _PoweroffSettingsScreen({required this.controller});
   final ServerController controller;
@@ -1337,6 +1386,7 @@ class _PoweroffSettingsScreen extends StatelessWidget {
   );
 }
 
+/// Shared card grouping used to keep independent settings visually scannable.
 class _SettingsGroup extends StatelessWidget {
   const _SettingsGroup({required this.title, required this.children});
   final String title;
@@ -1360,6 +1410,7 @@ class _SettingsGroup extends StatelessWidget {
   );
 }
 
+/// About section containing product metadata and bundled, read-only documents.
 class _AboutServergySection extends ConsumerWidget {
   const _AboutServergySection();
 
@@ -1443,6 +1494,7 @@ class _AboutServergySection extends ConsumerWidget {
   }
 }
 
+/// Formats copied support metadata in the UI language without profile details.
 String _localizedSupportText(BuildContext context, AppMetadata value) {
   final english = Localizations.localeOf(context).languageCode != 'de';
   return english
@@ -1450,6 +1502,8 @@ String _localizedSupportText(BuildContext context, AppMetadata value) {
       : value.supportText;
 }
 
+/// Renders a bundled Markdown-like document selected by the current locale.
+/// Documents are application assets, not web content or remote server files.
 class DocumentScreen extends StatelessWidget {
   const DocumentScreen({super.key, required this.title, required this.asset});
   final String title;
@@ -1490,6 +1544,10 @@ class DocumentScreen extends StatelessWidget {
   );
 }
 
+/// Five-step setup wizard for the one Servergy connection.
+///
+/// Draft values remain in controllers until step four successfully verifies
+/// SSH and host-key trust. Only then does the core controller persist them.
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key, this.initialStep = 0});
   final int initialStep;
@@ -1497,6 +1555,9 @@ class SetupScreen extends ConsumerStatefulWidget {
   ConsumerState<SetupScreen> createState() => _SetupScreenState();
 }
 
+/// Owns editable form state, progression locks, and ephemeral discovery
+/// selection. It deliberately delegates every persistence and network action
+/// to a provider controller.
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController(text: 'Homeserver');
@@ -1528,6 +1589,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   WakeOnLanCandidate? _wakeCandidate;
 
   @override
+  /// Seeds form fields from an existing profile when editing, never from
+  /// stored passwords or private keys (which are intentionally unreadable UI).
   void initState() {
     super.initState();
     final p = ref.read(controllerProvider).profile;
@@ -1550,6 +1613,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   @override
+  /// Disposes all local text/scroll resources; secure data stays in its owning
+  /// platform store rather than in this widget after it is closed.
   void dispose() {
     _stepScrollController.dispose();
     for (final item in [
@@ -1598,6 +1663,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
+  /// Selects a single page of the linear setup flow; later pages stay locked
+  /// until their prerequisites are satisfied by [_continue].
   Widget _stepContent() {
     final (title, description, content) = switch (_step) {
       0 => (
@@ -1722,6 +1789,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   bool _isStepUnlocked(int target) => target <= _furthestUnlockedStep;
 
+  /// Allows backward navigation freely but prevents skipping unverified setup
+  /// prerequisites through the progress indicator.
   void _goToStep(int target) {
     if (!_isStepUnlocked(target)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1886,6 +1955,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     ],
   );
 
+  /// Renders the optional, ephemeral discovery flow. Results are candidates;
+  /// selecting one only copies host and port into the editable draft fields.
   Widget _discoveryCard() {
     final discovery = ref.watch(discoveryProvider);
     final searching = discovery.isSearching;
@@ -2039,9 +2110,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
+  /// Stable local identity used to keep selection independent of list updates.
   String _candidateKey(DiscoveredServer candidate) =>
       '${candidate.host}:${candidate.port}';
 
+  /// Copies, rather than persists, a discovery candidate into the form.
   void _applyCandidate(DiscoveredServer candidate) {
     setState(() {
       _host.text = candidate.host;
@@ -2063,6 +2136,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     _scrollTo(_hostFieldKey);
   }
 
+  /// Builds a form field with consistent accessibility and secret handling.
+  /// Validation here only covers requiredness; domain validation runs when the
+  /// connection profile is constructed before controller invocation.
   Widget _field(
     TextEditingController controller,
     String label,
@@ -2173,6 +2249,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       ),
     ),
   );
+
+  /// Imports a candidate PEM into draft state. The private key reaches secure
+  /// storage only after the later SSH verification succeeds.
   Future<void> _importKey() async {
     final file = await FilePicker.pickFile(type: FileType.any);
     if (file == null) return;
@@ -2196,6 +2275,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
   }
 
+  /// Advances a linear wizard one step, making step four the SSH commit gate.
   Future<void> _continue() async {
     if (_step < 3) {
       if (_step == 2 &&
@@ -2231,10 +2311,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     await _finishSetup();
   }
 
+  /// Invalidates prior verification whenever a connection-form value changes.
   void _markConnectionUnverified(String _) {
     if (_connectionVerified) setState(() => _connectionVerified = false);
   }
 
+  /// Converts editable fields into validated public profile data.
+  /// Existing WOL data survives only when host and port remain the same,
+  /// because host-key and network settings must not follow a new endpoint.
   ServerProfile _connectionProfile() {
     final existing = ref.read(controllerProvider).profile;
     final host = validateHost(_host.text);
@@ -2258,12 +2342,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
+  /// Encodes the blank-password edit policy without reading a stored secret.
   SecretUpdate _passwordUpdate() => _mode == AuthenticationMode.keyPreferred
       ? const SecretUpdate.delete()
       : _password.text.isEmpty
       ? const SecretUpdate.keep()
       : SecretUpdate.replace(_password.text);
 
+  /// Asks the core controller to test, confirm, and atomically save the draft.
+  /// Only a success unlocks WOL setup and the final "finish" action.
   Future<void> _verifyAndSaveSsh() async {
     try {
       final profile = _connectionProfile();
@@ -2296,6 +2383,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
   }
 
+  /// Requests a WOL proposal through the already verified SSH connection; the
+  /// user still sees and can edit the proposed values before saving.
   Future<void> _detectWakeOnLan() async {
     final candidate = await ref
         .read(controllerProvider.notifier)
@@ -2314,6 +2403,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     _scrollTo(_macFieldKey);
   }
 
+  /// Scrolls after layout so dynamically inserted discovery/results fields have
+  /// a real render position; no hard-coded page offsets are relied on.
   void _scrollTo(GlobalKey key) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final target = key.currentContext?.findRenderObject();
@@ -2341,6 +2432,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     });
   }
 
+  /// Final commit for optional WOL data. It refuses to save a form that has not
+  /// passed the SSH verification gate, even if a caller reaches this method.
   Future<void> _finishSetup() async {
     if (!_connectionVerified) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2372,6 +2465,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 }
 
+/// Read-only progress indicator; tappable navigation is implemented by the
+/// wizard controls so it cannot bypass prerequisite checks.
 class _SetupProgress extends StatelessWidget {
   const _SetupProgress({required this.step});
   final int step;
@@ -2425,11 +2520,14 @@ class _SetupProgress extends StatelessWidget {
   );
 }
 
+/// Localizes the generic required-field error without duplicating each label.
 String _requiredFieldLabel(BuildContext context, String label) =>
     context.usesEnglish
     ? '${context.tr(label)} is required.'
     : '$label ist erforderlich.';
 
+/// Explicit local-data deletion confirmation. Remote server configuration is
+/// never touched by this action.
 Future<bool> _confirmConnectionDeletion(BuildContext context) async =>
     await showDialog<bool>(
       context: context,
@@ -2456,6 +2554,8 @@ Future<bool> _confirmConnectionDeletion(BuildContext context) async =>
     ) ??
     false;
 
+/// Compact explanatory row used where a security or setup decision needs
+/// context but not another interactive control.
 class _StepInfo extends StatelessWidget {
   const _StepInfo({required this.icon, required this.text});
   final IconData icon;
@@ -2471,6 +2571,9 @@ class _StepInfo extends StatelessWidget {
   );
 }
 
+/// Read-only view of the controller's privacy-safe event history.
+/// Export uses the same [DiagnosticEvent.toExportLine] representation and does
+/// not enrich it with profile, credential, MAC, or discovery information.
 class EventsScreen extends ConsumerWidget {
   const EventsScreen({super.key});
 
@@ -2526,6 +2629,8 @@ class EventsScreen extends ConsumerWidget {
     );
   }
 
+  /// Invokes the platform save picker only after the report was generated from
+  /// already-redacted fields.
   Future<void> _export(BuildContext context, String report) async {
     final path = await FilePicker.saveFile(
       fileName: 'servergy-diagnose.txt',
@@ -2538,6 +2643,7 @@ class EventsScreen extends ConsumerWidget {
   }
 }
 
+/// At-a-glance summary of the newest diagnostic without exposing raw errors.
 class _EventSummary extends StatelessWidget {
   const _EventSummary({required this.event, required this.total});
   final DiagnosticEvent? event;
@@ -2601,6 +2707,7 @@ class _EventSummary extends StatelessWidget {
   }
 }
 
+/// Navigable, intentionally terse presentation of one diagnostic event.
 class _EventRow extends StatelessWidget {
   const _EventRow({required this.event});
   final DiagnosticEvent event;
@@ -2629,6 +2736,7 @@ class _EventRow extends StatelessWidget {
   }
 }
 
+/// Displays the complete safe fields of one diagnostic event for support.
 class EventDetailScreen extends StatelessWidget {
   const EventDetailScreen({super.key, required this.event});
   final DiagnosticEvent event;
@@ -2685,6 +2793,7 @@ class EventDetailScreen extends StatelessWidget {
   }
 }
 
+/// Label/value row with selectable values for safe copying.
 class _DetailRow extends StatelessWidget {
   const _DetailRow({required this.label, required this.value});
   final String label;
@@ -2709,9 +2818,11 @@ class _DetailRow extends StatelessWidget {
   );
 }
 
+/// Calendar comparison used for event grouping and friendly relative labels.
 bool _isSameDay(DateTime? a, DateTime b) =>
     a != null && a.year == b.year && a.month == b.month && a.day == b.day;
 
+/// Formats a diagnostic date using localized today/yesterday shortcuts.
 String _formatDay(BuildContext context, DateTime date) {
   final locale = Localizations.localeOf(context).toLanguageTag();
   final now = DateTime.now();
@@ -2731,6 +2842,7 @@ String _eventCount(BuildContext context, int value) =>
     ? '$value Einträge'
     : '$value ${value == 1 ? 'entry' : 'entries'}';
 
+/// Single localization map for the fixed diagnostic-action vocabulary.
 String _eventActionLabel(BuildContext context, DiagnosticAction action) =>
     context.tr(switch (action) {
       DiagnosticAction.load => 'App-Status geladen',
@@ -2744,6 +2856,7 @@ String _eventActionLabel(BuildContext context, DiagnosticAction action) =>
       DiagnosticAction.discovery => 'Server im Netzwerk gesucht',
     });
 
+/// Lightweight vector-like in-app brand mark, independent of asset loading.
 class ServergyMark extends StatelessWidget {
   const ServergyMark({super.key, this.size = 34});
   final double size;
@@ -2764,6 +2877,8 @@ class _ServergyMarkPainter extends CustomPainter {
   const _ServergyMarkPainter();
 
   @override
+  /// Draws the mark from normalized 34px geometry, scaling each primitive so
+  /// it remains sharp in compact app bars and larger settings presentations.
   void paint(Canvas canvas, Size size) {
     final scale = size.width / 34;
     final background = Paint()..color = const Color(0xff092a3d);

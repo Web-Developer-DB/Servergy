@@ -1,12 +1,28 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+/// Immutable, Flutter-free domain vocabulary shared by persistence, network
+/// services, controllers, and widgets.
+///
+/// Keep this file free of I/O and UI imports. That makes the validation and
+/// migration rules deterministic, easy to unit-test, and safe for assistants
+/// to reuse without accidentally initiating a network operation.
+
 /// The supported login strategies. A key is preferred because a password never
 /// has to be entered or retained for the normal control flow.
 enum AuthenticationMode { keyPreferred, passwordOnly }
 
+/// The user-visible lifecycle of the one configured server.
+///
+/// `checking`, `waking`, and `shuttingDown` are transient controller states;
+/// they are not claims about the remote machine. Only a TCP check may turn the
+/// state into `online` or `offline`.
 enum ServerStatus { unknown, checking, offline, online, waking, shuttingDown }
 
+/// Whitelisted operation names for the redacted local event log.
+///
+/// Do not add arbitrary command output or endpoint data to this enum: its
+/// values are exported for support and must remain privacy-safe.
 enum DiagnosticAction {
   load,
   refresh,
@@ -26,6 +42,9 @@ enum DiagnosticAction {
 /// existing secret alone”, rather than “delete it”.
 enum SecretUpdateKind { keep, replace, delete }
 
+/// A tri-state instruction for secret persistence, rather than a secret value
+/// read from an edit form. See [SecretUpdateKind] for why a blank field is not
+/// automatically interpreted as deletion.
 class SecretUpdate {
   const SecretUpdate._(this.kind, this.value);
 
@@ -38,6 +57,10 @@ class SecretUpdate {
   final String? value;
 }
 
+/// A safe, user-facing failure with a stable, redacted machine-readable code.
+///
+/// Gateways throw this type for expected failures. Controllers map library and
+/// socket exceptions to it before an error reaches the UI or diagnostics.
 class ServergyError implements Exception {
   const ServergyError(this.message, {this.code = 'unknown'});
 
@@ -45,6 +68,11 @@ class ServergyError implements Exception {
   final String code;
 }
 
+/// Parsed six-byte Ethernet unicast address used to build a WOL magic packet.
+///
+/// The parser accepts common separators but normalizes output to uppercase
+/// colon notation. It rejects all-zero and multicast addresses because neither
+/// identifies a unique server network adapter.
 class MacAddress {
   MacAddress._(Uint8List bytes) : bytes = Uint8List.fromList(bytes);
 
@@ -83,6 +111,11 @@ class MacAddress {
 ///
 /// It deliberately lives separately from the SSH endpoint: SSH can be set up
 /// and verified first, while the user looks up the network card's MAC address.
+/// The minimum non-secret data required to wake a server via UDP broadcast.
+///
+/// These values live in the public profile because a MAC and broadcast address
+/// are configuration, not credentials. They are nevertheless excluded from
+/// diagnostics to avoid disclosing local-network topology in support exports.
 class WakeOnLanSettings {
   const WakeOnLanSettings({
     required this.mac,
@@ -110,6 +143,11 @@ class WakeOnLanSettings {
       );
 }
 
+/// Public connection configuration for Servergy's deliberately single server.
+///
+/// Passwords, private keys, key passphrases, and SSH host-key trust are kept
+/// elsewhere in platform secure storage. This separation is an important
+/// invariant: [toJson] must never grow to serialize a secret.
 class ServerProfile {
   const ServerProfile({
     required this.name,
@@ -129,7 +167,10 @@ class ServerProfile {
 
   bool get canWake => wakeOnLan != null;
 
-  /// V2 intentionally has no password, private key, passphrase or host key.
+  /// Serializes the current V3 public profile format.
+  ///
+  /// The version marker drives backwards-compatible migration in [fromJson];
+  /// it intentionally has no password, private key, passphrase, or host key.
   Map<String, Object> toJson() => <String, Object>{
     'version': 3,
     'name': name,
@@ -140,6 +181,11 @@ class ServerProfile {
     'authenticationMode': authenticationMode.name,
   };
 
+  /// Reads V3 plus older V1/V2 formats defensively.
+  ///
+  /// Corrupt, manually edited, or unknown data returns `null` instead of
+  /// crashing startup. A missing historical authentication mode represents
+  /// password-based setup, which preserves the old behaviour safely.
   static ServerProfile? fromJson(String source) {
     try {
       final json = jsonDecode(source) as Map<String, dynamic>;
@@ -180,6 +226,11 @@ class ServerProfile {
 }
 
 /// A local IPv4 range that the user explicitly allowed the app to inspect.
+/// A bounded local IPv4 range calculated from the active network interface.
+///
+/// Integer address boundaries allow discovery to scan without repeatedly
+/// parsing strings; [broadcast] remains a string because it is passed to the
+/// WOL socket and displayed to the user.
 class NetworkScope {
   const NetworkScope({
     required this.localAddress,
@@ -198,9 +249,15 @@ class NetworkScope {
   final String label;
 }
 
+/// Evidence by which a candidate was found. Neither source proves identity;
+/// SSH host-key confirmation is the trust boundary.
 enum DiscoverySource { mdns, portScan }
 
 /// A candidate, not proof of the identity of a homeserver.
+/// An ephemeral discovery result shown during setup, never persisted directly.
+///
+/// Results from mDNS and a TCP probe may describe the same endpoint; [merge]
+/// retains both sources so the UI can explain why the candidate is listed.
 class DiscoveredServer {
   const DiscoveredServer({
     required this.host,
@@ -238,6 +295,10 @@ class WakeOnLanCandidate {
   final WakeOnLanSettings settings;
 }
 
+/// Validates a bare hostname or IP literal, not a URL, userinfo, or path.
+///
+/// This keeps the endpoint unambiguous before it is supplied to socket and SSH
+/// APIs and avoids treating a pasted URL as a connection target.
 String validateHost(String value) {
   final host = value.trim();
   if (host.isEmpty || host.contains(RegExp(r'[/:?#@\s]'))) {
@@ -249,6 +310,7 @@ String validateHost(String value) {
   return host;
 }
 
+/// Converts a JSON or form port value and constrains it to the TCP/UDP range.
 int validatePort(Object? value, {required String label}) {
   final port = switch (value) {
     int number => number,
@@ -264,6 +326,10 @@ int validatePort(Object? value, {required String label}) {
   return port;
 }
 
+/// Validates syntax for an IPv4 broadcast destination.
+///
+/// The active network determines whether this address is appropriate; this
+/// domain-level check only ensures that it is a well-formed IPv4 literal.
 String validateBroadcast(String value) {
   final address = value.trim();
   final match = RegExp(
@@ -278,6 +344,10 @@ String validateBroadcast(String value) {
   return address;
 }
 
+/// Short-lived SSH authentication material passed from controller to gateway.
+///
+/// It intentionally has no JSON conversion and should never be recorded in
+/// diagnostics. Key passphrases remain only in memory for one operation.
 class SshCredentials {
   const SshCredentials({this.privateKeyPem, this.keyPassphrase, this.password});
 
@@ -289,6 +359,10 @@ class SshCredentials {
   bool get hasPassword => password?.isNotEmpty ?? false;
 }
 
+/// A bounded, redacted support event with no profile or credential fields.
+///
+/// [code] is a stable technical category, not raw exception text. This allows
+/// diagnostics to be useful without leaking remote commands or network data.
 class DiagnosticEvent {
   const DiagnosticEvent({
     required this.at,

@@ -18,6 +18,8 @@ const _masterSize = 1024;
 // central safe zone so launchers such as MIUI do not cut off either arrow.
 const _androidAdaptiveForegroundScale = .72;
 
+/// Generates every tracked launcher derivative from the approved lockup.
+/// The app itself never executes this tool; run it only after brand changes.
 void main() {
   final root = Directory.current;
   final master = _loadMaster(root);
@@ -91,6 +93,7 @@ void main() {
   stdout.writeln('Generated Android, Windows, and Linux launcher icons.');
 }
 
+/// Decodes, extracts, and normalizes the single source tile to [_masterSize].
 image.Image _loadMaster(Directory root) {
   final sourceFile = File.fromUri(root.uri.resolve(_brandLockup));
   if (!sourceFile.existsSync()) {
@@ -107,6 +110,8 @@ image.Image _loadMaster(Directory root) {
   return _resize(extractedTile, _masterSize);
 }
 
+/// Isolates the navy app tile from the supplied marketing lockup preview.
+/// The source includes a checkerboard, so rounded-corner alpha is rebuilt.
 image.Image _extractTile(image.Image source) {
   final bounds = _findNavyTileBounds(source);
   final side = math.max(bounds.width, bounds.height);
@@ -141,6 +146,7 @@ image.Image _extractTile(image.Image source) {
   return _maskRoundedCorners(square, radius: side * 0.26);
 }
 
+/// Finds the bounding rectangle of the recognizable navy tile background.
 _Bounds _findNavyTileBounds(image.Image source) {
   var left = source.width;
   var top = source.height;
@@ -165,6 +171,8 @@ _Bounds _findNavyTileBounds(image.Image source) {
   return _Bounds(left, top, right, bottom);
 }
 
+/// Applies alpha only outside the approved rounded tile and keeps mark details
+/// intact while replacing the preview checkerboard with the brand navy.
 image.Image _maskRoundedCorners(image.Image source, {required double radius}) {
   final result = image.Image(
     width: source.width,
@@ -202,6 +210,7 @@ image.Image _maskRoundedCorners(image.Image source, {required double radius}) {
   return result;
 }
 
+/// Calculates a one-pixel antialiased rounded-rectangle alpha mask value.
 int _roundedRectAlpha(
   double x,
   double y,
@@ -217,6 +226,8 @@ int _roundedRectAlpha(
   return _byte((0.5 - distance).clamp(0.0, 1.0) * 255);
 }
 
+/// Creates a transparent foreground containing only the mark inside Android's
+/// documented adaptive-icon safe zone.
 image.Image _makeAndroidAdaptiveForeground(image.Image master) {
   final isolatedMark = image.Image(
     width: master.width,
@@ -255,6 +266,7 @@ image.Image _makeAndroidAdaptiveForeground(image.Image master) {
   return foreground;
 }
 
+/// Converts the adaptive foreground to alpha-preserving white monochrome.
 image.Image _makeMonochrome(image.Image foreground) {
   final monochrome = image.Image(
     width: foreground.width,
@@ -270,6 +282,7 @@ image.Image _makeMonochrome(image.Image foreground) {
   return monochrome;
 }
 
+/// Uses cubic scaling consistently for all platform size variants.
 image.Image _resize(image.Image source, int size) => image.copyResize(
   source,
   width: size,
@@ -277,6 +290,7 @@ image.Image _resize(image.Image source, int size) => image.copyResize(
   interpolation: image.Interpolation.cubic,
 );
 
+/// Heuristic identifying the lockup's dark-blue background pixels.
 bool _isNavy(image.Pixel pixel) {
   final red = _byte(pixel.r);
   final green = _byte(pixel.g);
@@ -288,6 +302,8 @@ bool _isNavy(image.Pixel pixel) {
       blue - green > 6;
 }
 
+/// Preserves colorful arrows and pale server-bay elements while masking the
+/// non-brand preview area around the tile.
 bool _isApprovedMarkDetail(
   image.Pixel pixel,
   int x,
@@ -313,6 +329,7 @@ bool _isApprovedMarkDetail(
 
 int _byte(num value) => value.round().clamp(0, 255).toInt();
 
+/// Inclusive pixel bounds; width/height therefore add one to each difference.
 class _Bounds {
   const _Bounds(this.left, this.top, this.right, this.bottom);
 
@@ -327,9 +344,11 @@ class _Bounds {
   double get centerY => (top + bottom + 1) / 2;
 }
 
+/// Encodes an image as PNG before delegating directory creation and file write.
 void _writePng(Uri uri, image.Image value) =>
     _writeBytes(uri, image.encodePng(value));
 
+/// Creates platform asset directories on demand and flushes output to disk.
 void _writeBytes(Uri uri, List<int> bytes) {
   final file = File.fromUri(uri);
   file.parent.createSync(recursive: true);
