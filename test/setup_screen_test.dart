@@ -163,10 +163,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('appearance-setting')), findsOneWidget);
-    expect(find.text('Systemstandard'), findsAtLeastNWidgets(2));
+    expect(find.text('System'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('appearance-setting')));
     await tester.pumpAndSettle();
+    expect(find.text('System'), findsNWidgets(2));
     expect(find.text('Hell'), findsOneWidget);
     expect(find.text('Dunkel'), findsOneWidget);
 
@@ -380,7 +381,7 @@ void main() {
     const metadata = AppMetadata(
       name: 'Servergy',
       version: '0.1.0',
-      build: '6',
+      build: '7',
       releaseChannel: 'Stabil',
       platform: 'android',
     );
@@ -389,7 +390,7 @@ void main() {
     await tester.scrollUntilVisible(find.text('Über Servergy'), 240);
     await tester.pumpAndSettle();
 
-    expect(find.text('Stabil · 0.1.0 (Build 6)'), findsOneWidget);
+    expect(find.text('Stabil · 0.1.0 (Build 7)'), findsOneWidget);
     expect(find.text('Versionsinformationen kopieren'), findsOneWidget);
   });
 

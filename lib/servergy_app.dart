@@ -1108,7 +1108,7 @@ class SettingsScreen extends ConsumerWidget {
 
 String _appearanceLabel(AppearancePreference preference) =>
     switch (preference) {
-      AppearancePreference.system => 'Systemstandard',
+      AppearancePreference.system => 'System',
       AppearancePreference.light => 'Hell',
       AppearancePreference.dark => 'Dunkel',
     };

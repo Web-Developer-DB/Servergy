@@ -126,6 +126,7 @@ const _english = <String, String>{
   'Verbindung, Steuerung und Produktinformationen.':
       'Connection, controls, and product information.',
   'Darstellung': 'Appearance',
+  'System': 'System default',
   'Hell': 'Light',
   'Dunkel': 'Dark',
   'Systemstandard': 'System default',
