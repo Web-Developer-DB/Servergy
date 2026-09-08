@@ -22,6 +22,34 @@ securely over SSH, and shut it down in a controlled way after use. This keeps a
 home server practical without requiring it to run all the time or be managed
 through a complex administration interface.
 
+## 🔍 How Servergy works
+
+| Action | What happens technically | Your control |
+| --- | --- | --- |
+| **Start the server** | Servergy sends a Wake-on-LAN magic packet on the current home network. A powered-off server does not execute a command. | It works only when BIOS/UEFI, network adapter, and operating system support Wake-on-LAN. The app never configures those prerequisites silently. |
+| **Check the connection** | The app connects over SSH and asks you to consciously confirm the host-key fingerprint on first contact. | Passwords, keys, and confirmed host keys remain in your device’s secure storage. A changed host key blocks further actions. |
+| **Shut down the server** | After optional one-time preparation, the app calls only `sudo -n /usr/local/sbin/servergy-poweroff`. This argument-free helper starts just the fixed systemd shutdown unit. | There is no remote terminal, no arbitrary shell command, and no general-purpose `sudo` permission. |
+
+### What optional server preparation installs
+
+Using **Settings → Safe shutdown → Prepare server**, the app can configure
+exactly these three files on a Debian/Ubuntu server with systemd:
+
+| Server file | Permissions | Purpose |
+| --- | --- | --- |
+| `/usr/local/sbin/servergy-poweroff` | `root:root` · `0755` | Argument-free helper; starts only the Servergy systemd unit. |
+| `/etc/systemd/system/servergy-poweroff.service` | `root:root` · `0644` | Oneshot unit that runs `systemctl poweroff --no-block`. |
+| `/etc/sudoers.d/servergy` | `root:root` · `0440` | Lets the chosen SSH user call only the helper — not `shutdown`, a shell, or any other command. |
+
+For this one-time preparation, Servergy asks for the sudo password only over
+the already verified SSH connection; it is neither stored nor embedded in a
+command. The app verifies the fixed helper contents before transfer and checks
+the sudoers file with `visudo` before placing it below `/etc/sudoers.d/`.
+
+If you prefer to inspect or set up these files yourself, the [complete server
+guide](docs/server-setup.en.md) includes their exact contents, ownership and
+permissions, verification commands, and safe removal.
+
 <p align="center">
   <a href="README.md">🇩🇪 Deutsch</a> ·
   <strong>🇬🇧 English</strong>
@@ -47,6 +75,7 @@ through a complex administration interface.
 
 <p align="center">
   <a href="#-for-existing-debian-home-servers">Who it is for</a> ·
+  <a href="#-how-servergy-works">How it works</a> ·
   <a href="#-overview">Overview</a> ·
   <a href="#-the-app-at-a-glance">See the app</a> ·
   <a href="#-getting-started">Getting started</a> ·
