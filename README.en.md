@@ -9,11 +9,18 @@
   A local Flutter app for Wake-on-LAN and controlled SSH power management.
 </p>
 
-Servergy is designed for home servers that are used occasionally: on your
-local network, you can start the server in a few steps, check its current
-status, and safely shut it down again when you are done. This keeps everyday
-server use practical without requiring the home server to run permanently or
-be managed through a complex administration interface.
+## 🎯 For existing Debian home servers
+
+Servergy is a **mobile-first companion** for an already configured home server
+running Debian or a Debian-based system such as Ubuntu. It neither replaces the
+operating system nor acts as a full server control panel, and it never executes
+arbitrary remote commands.
+
+Instead, it provides the few tools that matter for a home server used from time
+to time: start it conveniently when Wake-on-LAN is available, verify it
+securely over SSH, and shut it down in a controlled way after use. This keeps a
+home server practical without requiring it to run all the time or be managed
+through a complex administration interface.
 
 <p align="center">
   <a href="README.md">🇩🇪 Deutsch</a> ·
@@ -39,6 +46,7 @@ be managed through a complex administration interface.
 </p>
 
 <p align="center">
+  <a href="#-for-existing-debian-home-servers">Who it is for</a> ·
   <a href="#-overview">Overview</a> ·
   <a href="#-the-app-at-a-glance">See the app</a> ·
   <a href="#-getting-started">Getting started</a> ·
