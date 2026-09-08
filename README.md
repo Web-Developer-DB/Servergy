@@ -57,11 +57,12 @@ oder über eine umfangreiche Verwaltungsoberfläche betreut werden muss.
 ## 📱 Die App auf einen Blick
 
 <p align="center">
-  <img src="assets/screenshots/dashboard-dark.png" width="320" alt="Servergy-Dashboard im dunklen Design mit dem ausgeschalteten Homeserver und den Aktionen Server starten, SSH-Verbindung testen und Server herunterfahren" />
+  <img src="assets/screenshots/dashboard-dark.png" width="230" alt="Servergy-Dashboard im dunklen Design mit dem ausgeschalteten Homeserver und den Aktionen Server starten, SSH-Verbindung testen und Server herunterfahren" />
+  <img src="assets/screenshots/settings-dark.png" width="230" alt="Servergy-Einstellungen im dunklen Design mit Darstellung, Sprache, Serververbindung, Wake-on-LAN, sicherem Herunterfahren und Datenschutz" />
 </p>
 
 <p align="center">
-  <em>Das kompakte Dashboard zeigt den Serverzustand und die passende nächste Aktion – auf Android, Linux und Windows.</em>
+  <em>Dashboard und Einstellungen: kompakt, klar und auf Android, Linux und Windows gleich bedienbar.</em>
 </p>
 
 ## ✨ Auf einen Blick
