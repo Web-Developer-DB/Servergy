@@ -56,11 +56,12 @@ be managed through a complex administration interface.
 ## 📱 The app at a glance
 
 <p align="center">
-  <img src="assets/screenshots/dashboard-dark.png" width="320" alt="Servergy dark dashboard showing an offline home server and the actions Start server, Test SSH connection, and Shut down server" />
+  <img src="assets/screenshots/dashboard-dark.png" width="230" alt="Servergy dark dashboard showing an offline home server and the actions Start server, Test SSH connection, and Shut down server" />
+  <img src="assets/screenshots/settings-dark.png" width="230" alt="Servergy dark settings screen with appearance, language, server connection, Wake-on-LAN, safe shutdown, and privacy controls" />
 </p>
 
 <p align="center">
-  <em>The compact dashboard shows server status and the appropriate next action — on Android, Linux, and Windows.</em>
+  <em>Dashboard and settings: compact, clear, and consistent on Android, Linux, and Windows.</em>
 </p>
 
 ## ✨ Overview
