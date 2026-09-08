@@ -23,6 +23,36 @@ Nutzung kontrolliert wieder herunterfahren. So muss der Homeserver nicht
 dauerhaft laufen und bleibt dennoch ohne komplizierte Verwaltungsoberfläche
 alltagstauglich.
 
+## 🔍 So arbeitet Servergy
+
+| Aktion | Was technisch passiert | Deine Kontrolle |
+| --- | --- | --- |
+| **Server starten** | Servergy sendet im aktuellen Heimnetz ein Wake-on-LAN-„Magic Packet“. Der ausgeschaltete Server führt dabei keinen Befehl aus. | Das funktioniert nur, wenn BIOS/UEFI, Netzwerkkarte und Betriebssystem Wake-on-LAN unterstützen. Die App richtet diese Voraussetzungen nicht heimlich ein. |
+| **Verbindung prüfen** | Die App verbindet sich über SSH und verlangt beim ersten Kontakt die bewusste Bestätigung des Host-Key-Fingerprints. | Passwort, Schlüssel und bestätigter Host-Key bleiben im sicheren Speicher deines Geräts. Ein veränderter Host-Key blockiert weitere Aktionen. |
+| **Server herunterfahren** | Nach einer optionalen, einmaligen Vorbereitung ruft die App ausschließlich `sudo -n /usr/local/sbin/servergy-poweroff` auf. Dieser argumentlose Helper startet nur die fest definierte systemd-Unit zum Herunterfahren. | Es gibt kein Remote-Terminal, keine frei wählbaren Shell-Befehle und keine allgemeine `sudo`-Freigabe. |
+
+### Was die optionale Servervorbereitung installiert
+
+Über **Einstellungen → Sicheres Herunterfahren → Server vorbereiten** kann die
+App auf einem Debian/Ubuntu-Server mit systemd genau diese drei Dateien
+einrichten:
+
+| Serverdatei | Rechte | Aufgabe |
+| --- | --- | --- |
+| `/usr/local/sbin/servergy-poweroff` | `root:root` · `0755` | Argumentloser Helper; startet ausschließlich die Servergy-Systemd-Unit. |
+| `/etc/systemd/system/servergy-poweroff.service` | `root:root` · `0644` | Oneshot-Unit, die `systemctl poweroff --no-block` ausführt. |
+| `/etc/sudoers.d/servergy` | `root:root` · `0440` | Erlaubt dem gewählten SSH-Benutzer ausschließlich den Helper-Aufruf – nicht `shutdown`, keine Shell und keine weiteren Befehle. |
+
+Für die einmalige Einrichtung fragt Servergy das sudo-Passwort nur über die
+bereits geprüfte SSH-Verbindung ab; es wird weder gespeichert noch in einen
+Befehl eingebettet. Die App prüft die fest eingebauten Helper-Inhalte vor dem
+Übertragen und validiert die sudoers-Datei mit `visudo`, bevor sie in
+`/etc/sudoers.d/` landet.
+
+Möchtest du diese Dateien lieber selbst prüfen oder manuell einrichten, findest
+du in der [vollständigen Serveranleitung](docs/server-setup.md) ihren genauen
+Inhalt, Eigentümer und Rechte, Prüfkommandos sowie eine sichere Entfernung.
+
 <p align="center">
   <strong>🇩🇪 Deutsch</strong> ·
   <a href="README.en.md">🇬🇧 English</a>
@@ -48,6 +78,7 @@ alltagstauglich.
 
 <p align="center">
   <a href="#-für-bestehende-debian-homeserver">Zielgruppe</a> ·
+  <a href="#-so-arbeitet-servergy">Funktionsweise</a> ·
   <a href="#-auf-einen-blick">Überblick</a> ·
   <a href="#-die-app-auf-einen-blick">App ansehen</a> ·
   <a href="#-erste-schritte">Erste Schritte</a> ·
