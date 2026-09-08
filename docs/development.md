@@ -2,7 +2,7 @@
 
 ## Umgebung einrichten
 
-1. Repository auf dem Branch `Dev` auschecken.
+1. Repository auf dem Branch `main` auschecken.
 2. Flutter SDK passend zu `environment.sdk` in `pubspec.yaml` installieren.
 3. Android Studio mit Android SDK 37 und einem JDK aus Android Studio installieren.
 4. Unter Linux die Secret-Service-Bibliotheken installieren:

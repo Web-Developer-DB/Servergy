@@ -22,10 +22,10 @@ be managed through a complex administration interface.
 
 <p align="center">
   <a href="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml">
-    <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=Dev" alt="Quality checks" />
+    <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=main" alt="Quality checks for main" />
   </a>
   <a href="docs/release-readiness.md">
-    <img src="https://img.shields.io/badge/Status-Stable-0B7A43?style=flat-square" alt="Status: Stable" />
+    <img src="https://img.shields.io/badge/Status-Active%20development-D97706?style=flat-square" alt="Status: Active development" />
   </a>
   <a href="https://github.com/Web-Developer-DB/Servergy/releases">
     <img src="https://img.shields.io/badge/Version-0.1.0-0F4C81?style=flat-square" alt="Version 0.1.0" />
@@ -40,17 +40,28 @@ be managed through a complex administration interface.
 
 <p align="center">
   <a href="#-overview">Overview</a> ·
+  <a href="#-the-app-at-a-glance">See the app</a> ·
   <a href="#-getting-started">Getting started</a> ·
   <a href="#-security-by-default">Security</a> ·
   <a href="#-quality-and-release">Quality &amp; release</a> ·
   <a href="#-documentation">Documentation</a>
 </p>
 
-> [!IMPORTANT]
-> **Servergy 0.1.0 is the first stable release.** The app is intended for
-> your own home server. Before publishing a build, complete the real-device
-> tests, signatures, and release criteria documented in
-> [docs/release-readiness.md](docs/release-readiness.md).
+> [!NOTE]
+> **Servergy is under active development; a GitHub release is not available
+> yet.** The app is intended for your own home server. Before the first
+> publication, complete the real-device tests, signatures, and release criteria
+> documented in [docs/release-readiness.md](docs/release-readiness.md).
+
+## 📱 The app at a glance
+
+<p align="center">
+  <img src="assets/screenshots/dashboard-dark.png" width="320" alt="Servergy dark dashboard showing an offline home server and the actions Start server, Test SSH connection, and Shut down server" />
+</p>
+
+<p align="center">
+  <em>The compact dashboard shows server status and the appropriate next action — on Android, Linux, and Windows.</em>
+</p>
 
 ## ✨ Overview
 
@@ -121,7 +132,8 @@ available in Events and Settings.
 
 ### For users
 
-Release artifacts are published as signed GitHub releases with SHA-256
+The first download will be published only after release sign-off. Afterwards,
+release artifacts will be published as signed GitHub releases with SHA-256
 checksums. Always read the release notes and verify the checksum before
 installing an artifact.
 
@@ -265,8 +277,9 @@ before uploading it.
 
 ## 🤝 Contributing
 
-`Dev` is the integration branch for development; `main` remains the stable
-target branch for published releases.
+`main` is the shared integration and release branch. Create a short-lived topic
+branch for each change, keep it current with `main`, then open a pull request
+into `main`.
 
 Before opening a pull request:
 

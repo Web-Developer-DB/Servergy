@@ -22,10 +22,10 @@ oder über eine umfangreiche Verwaltungsoberfläche betreut werden muss.
 
 <p align="center">
   <a href="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml">
-    <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=Dev" alt="Qualitätsprüfung" />
+    <img src="https://github.com/Web-Developer-DB/Servergy/actions/workflows/quality.yml/badge.svg?branch=main" alt="Qualitätsprüfung für main" />
   </a>
   <a href="docs/release-readiness.md">
-    <img src="https://img.shields.io/badge/Status-Stabil-0B7A43?style=flat-square" alt="Status: Stabil" />
+    <img src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-D97706?style=flat-square" alt="Status: Aktive Entwicklung" />
   </a>
   <a href="https://github.com/Web-Developer-DB/Servergy/releases">
     <img src="https://img.shields.io/badge/Version-0.1.0-0F4C81?style=flat-square" alt="Version 0.1.0" />
@@ -40,17 +40,29 @@ oder über eine umfangreiche Verwaltungsoberfläche betreut werden muss.
 
 <p align="center">
   <a href="#-auf-einen-blick">Überblick</a> ·
+  <a href="#-die-app-auf-einen-blick">App ansehen</a> ·
   <a href="#-erste-schritte">Erste Schritte</a> ·
   <a href="#-sicherheit-als-standard">Sicherheit</a> ·
   <a href="#-qualität-und-release">Qualität &amp; Release</a> ·
   <a href="#-dokumentation">Dokumentation</a>
 </p>
 
-> [!IMPORTANT]
-> **Servergy 0.1.0 ist der erste stabile Release.** Die App ist für einen
-> eigenen Homeserver gedacht. Vor jeder Veröffentlichung müssen die Realtests,
-> Signaturen und Freigabekriterien in
+> [!NOTE]
+> **Servergy befindet sich in aktiver Entwicklung; ein GitHub-Release ist noch
+> nicht verfügbar.** Die App ist für einen eigenen Homeserver gedacht. Vor der
+> ersten Veröffentlichung müssen die Realtests, Signaturen und
+> Freigabekriterien in
 > [docs/release-readiness.md](docs/release-readiness.md) erfüllt sein.
+
+## 📱 Die App auf einen Blick
+
+<p align="center">
+  <img src="assets/screenshots/dashboard-dark.png" width="320" alt="Servergy-Dashboard im dunklen Design mit dem ausgeschalteten Homeserver und den Aktionen Server starten, SSH-Verbindung testen und Server herunterfahren" />
+</p>
+
+<p align="center">
+  <em>Das kompakte Dashboard zeigt den Serverzustand und die passende nächste Aktion – auf Android, Linux und Windows.</em>
+</p>
 
 ## ✨ Auf einen Blick
 
@@ -122,9 +134,10 @@ den Ereignissen und Einstellungen erreichbar.
 
 ### Für Anwender
 
-Release-Artefakte erscheinen als signierte GitHub-Releases mit
-SHA-256-Prüfsummen. Prüfe immer die Release-Notizen und die Prüfsumme, bevor du
-ein Artefakt installierst.
+Der erste Download wird erst nach der Release-Abnahme veröffentlicht. Danach
+erscheinen Release-Artefakte als signierte GitHub-Releases mit SHA-256-Prüfsummen.
+Prüfe immer die Release-Notizen und die Prüfsumme, bevor du ein Artefakt
+installierst.
 
 | Plattform | Release-Artefakt | Start |
 | --- | --- | --- |
@@ -267,8 +280,9 @@ dem Hochladen noch einmal durch.
 
 ## 🤝 Mitwirken
 
-`Dev` ist der Integrationsbranch für die Entwicklung; `main` bleibt der
-stabile Zielbranch für veröffentlichte Releases.
+`main` ist der gemeinsame Integrations- und Release-Branch. Erstelle für
+Änderungen einen kurzen Themenbranch, halte ihn aktuell gegenüber `main` und
+öffne anschließend einen Pull Request nach `main`.
 
 Bevor du einen Pull Request öffnest:
 
