@@ -1,5 +1,9 @@
 // Builds the colourful README showcase from the unedited product screenshots.
 // Run with: dart run tool/generate_readme_showcase.dart
+//
+// This is a deterministic documentation-artifact generator, not app runtime
+// code. It reads the three source PNGs, resizes them to fixed dimensions, and
+// writes one checked-in composite image used by README.md.
 import 'dart:io';
 
 import 'package:image/image.dart' as image;
@@ -9,6 +13,7 @@ const _dashboardPath = 'assets/screenshots/dashboard-dark.png';
 const _settingsPath = 'assets/screenshots/settings-dark.png';
 const _outputPath = 'assets/screenshots/app-showcase.png';
 
+/// Generates the final 1200×760 composition in the repository asset location.
 void main() {
   final background = _read(_backgroundPath);
   final dashboard = _read(_dashboardPath);
@@ -50,6 +55,8 @@ void main() {
   stdout.writeln('Generated $_outputPath');
 }
 
+/// Reads an image eagerly and fails with a clear path-specific error when a
+/// source asset is missing or corrupt.
 image.Image _read(String path) {
   final bytes = File(path).readAsBytesSync();
   final decoded = image.decodeImage(bytes);
@@ -59,6 +66,8 @@ image.Image _read(String path) {
   return decoded;
 }
 
+/// Paints a framed screenshot and its simple offset shadow onto [canvas].
+/// Fixed coordinates make README output reproducible between machines.
 void _placePreview(
   image.Image canvas,
   image.Image preview, {

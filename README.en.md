@@ -308,6 +308,7 @@ before uploading it.
 | [Release readiness](docs/release-readiness.md) | Real-device test matrix, signatures, release gates, and feedback rules |
 | [Server guide](docs/server-setup.en.md) | Wake-on-LAN, SSH user, restricted sudoers helper, and manual fallback |
 | [Architecture](docs/architecture.md) | Data flow, components, boundaries, and security decisions |
+| [Code guide (German)](docs/code-guide.md) | File responsibilities, security invariants, and safe extension workflow |
 | [Development & tests](docs/development.md) | Local development environment, builds, quality checks, and real-device tests |
 | [Privacy](docs/privacy.en.md) | Local data processing and redacted diagnostic exports |
 | [Release checklist](docs/release-checklist.md) | Final checks before a stable or explicitly pre-release build |

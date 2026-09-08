@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// The language choice is deliberately independent from the server profile.
 /// System mode follows German system locales and otherwise uses English.
+/// Persisted app-language choice. `system` maps German system locales to
+/// German and all other locales to English in the app's locale resolver.
 enum LanguagePreference {
   system,
   german,
@@ -22,6 +24,7 @@ enum LanguagePreference {
   };
 }
 
+/// Immutable view state for language loading and persistence feedback.
 class LanguageState {
   const LanguageState({
     this.preference = LanguagePreference.system,
@@ -49,11 +52,13 @@ class LanguageState {
   );
 }
 
+/// Small persistence contract that keeps [LanguageController] testable.
 abstract interface class LanguageStore {
   Future<LanguagePreference> load();
   Future<void> save(LanguagePreference preference);
 }
 
+/// Production implementation for the one non-sensitive language preference.
 class PreferencesLanguageStore implements LanguageStore {
   PreferencesLanguageStore({this.preferences});
 
@@ -71,14 +76,20 @@ class PreferencesLanguageStore implements LanguageStore {
       _store.setString(key, preference.name);
 }
 
+/// Injectable language persistence used by the controller.
 final languageStoreProvider = Provider<LanguageStore>(
   (ref) => PreferencesLanguageStore(),
 );
 
+/// Reactive state observed by the root app and settings UI.
 final languageProvider = NotifierProvider<LanguageController, LanguageState>(
   LanguageController.new,
 );
 
+/// Handles asynchronous language loading and an optimistic, reversible save.
+///
+/// `_selectionMade` avoids a common async race: a slow initial read must not
+/// replace a setting the user has already selected in the current session.
 class LanguageController extends Notifier<LanguageState> {
   var _selectionMade = false;
   var _saveToken = 0;
@@ -101,6 +112,7 @@ class LanguageController extends Notifier<LanguageState> {
     }
   }
 
+  /// Applies the choice immediately and restores the preceding choice on error.
   Future<void> select(LanguagePreference preference) async {
     final previous = state.preference;
     final token = ++_saveToken;

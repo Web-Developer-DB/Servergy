@@ -7,6 +7,10 @@ import 'package:servergy/core/controller.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
 
+// Safety-regression tests for controller ordering and cancellation. These use
+// deterministic fakes instead of real sockets, SSH, or platform storage so a
+// failure identifies a contract violation rather than a network condition.
+
 void main() {
   test(
     'a rejected draft login never persists a profile or its password',
@@ -119,6 +123,7 @@ void main() {
   );
 }
 
+/// Stable fixture representing a complete password-authenticated connection.
 const _passwordProfile = ServerProfile(
   name: 'Homeserver',
   host: '192.168.0.10',
@@ -127,6 +132,7 @@ const _passwordProfile = ServerProfile(
   authenticationMode: AuthenticationMode.passwordOnly,
 );
 
+/// Builds a controller under test with every side effect explicitly injected.
 ProviderContainer _container({
   required _AuditStore store,
   required _AuditSsh ssh,
@@ -145,6 +151,7 @@ ProviderContainer _container({
   ],
 );
 
+/// Advances microtasks until a fake reports that an async controller action ran.
 Future<void> _waitFor(bool Function() condition) async {
   for (var attempt = 0; attempt < 20; attempt++) {
     if (condition()) return;
@@ -153,6 +160,7 @@ Future<void> _waitFor(bool Function() condition) async {
   throw StateError('The asynchronous test operation did not start.');
 }
 
+/// Test controller whose build method avoids production's startup I/O.
 class _AuditController extends ServerController {
   _AuditController({
     required ProfileStore store,
@@ -167,6 +175,7 @@ class _AuditController extends ServerController {
   AppState build() => AppState(profile: initialProfile);
 }
 
+/// Predictable reachability fake with an observable probe count.
 class _AuditNetwork implements NetworkGateway {
   _AuditNetwork({this.online = true});
 
@@ -183,6 +192,7 @@ class _AuditNetwork implements NetworkGateway {
   Future<void> wake(ServerProfile profile) async {}
 }
 
+/// SSH fake that can block, fail, and record ordering without handling secrets.
 class _AuditSsh implements SshGateway {
   _AuditSsh({this.testError, this.testGate, List<String>? timeline})
     : timeline = timeline ?? <String>[];
@@ -225,6 +235,7 @@ class _AuditSsh implements SshGateway {
   }) async => throw UnimplementedError();
 }
 
+/// In-memory store exposing persistence calls for assertions about commit order.
 class _AuditStore implements ProfileStore {
   _AuditStore({this.storedPassword, List<String>? timeline})
     : timeline = timeline ?? <String>[];

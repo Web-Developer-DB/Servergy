@@ -17,6 +17,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
 
+// This file is the infrastructure boundary. It is the only production layer
+// that talks to sockets, SSH, platform channels, or persistent storage. UI
+// code reaches it through the narrow gateway interfaces below, which makes
+// side effects replaceable in controller tests.
+
+// Storage keys are versioned so format migrations are explicit. Keep secrets
+// (`password`, `private-key`, `host-key`) separate from public preferences.
 const _profileKey = 'servergy.profile.v3';
 const _profileV2Key = 'servergy.profile.v2';
 const _legacyProfileKey = 'servergy.profile.v1';
@@ -31,6 +38,8 @@ const _diagnosticsKey = 'servergy.diagnostics.v1';
 class LocalNetworkAccess {
   static const _channel = MethodChannel('dev.servergy.servergy/local_network');
 
+  /// Requests Android's local-network permission only when the platform needs
+  /// it; desktop callers receive `true` without a platform-channel roundtrip.
   Future<bool> ensureAllowed() async {
     if (!Platform.isAndroid) return true;
     return (await _channel.invokeMethod<bool>('ensureAccess')) ?? false;
@@ -48,6 +57,10 @@ class LocalNetworkAccess {
 }
 
 /// A host key is tied to one endpoint, not merely to a display name.
+///
+/// `scope` is lower-cased `host:port`. Changing either deliberately requires a
+/// fresh confirmation, preventing trust from silently following a renamed or
+/// redirected endpoint.
 class HostKeyTrust {
   const HostKeyTrust({
     required this.scope,
@@ -122,6 +135,10 @@ ExecStart=/usr/bin/systemctl poweroff --no-block
       sha256.convert(utf8.encode(helper)).toString() == _helperSha256 &&
       sha256.convert(utf8.encode(service)).toString() == _serviceSha256;
 
+  /// Produces the one-command sudoers rule after strict username validation.
+  ///
+  /// No quoting or interpolation of arbitrary UI content is permitted in this
+  /// privileged file. The accepted username grammar is enforced below.
   static String sudoersFor(String username) {
     validateProvisioningUsername(username);
     return '$username ALL=(root) NOPASSWD: $helperPath${String.fromCharCode(10)}';
@@ -142,6 +159,9 @@ String validateProvisioningUsername(String value) {
   return username;
 }
 
+/// Persistence contract for public configuration, secrets, trust, and redacted
+/// diagnostics. The interface is deliberately small so controllers can be
+/// tested with a memory implementation rather than device plugins.
 abstract class ProfileStore {
   Future<ServerProfile?> loadProfile();
   Future<void> saveProfile(ServerProfile profile);
@@ -175,6 +195,11 @@ class SettingsStore implements ProfileStore {
   final FlutterSecureStorage _secrets;
 
   @override
+  /// Reads the current profile and performs safe one-way migration from V1/V2.
+  ///
+  /// The obsolete host-key representation is removed even when the profile is
+  /// absent: it was not comparable to current fingerprints and must not grant
+  /// trust after an upgrade.
   Future<ServerProfile?> loadProfile() async {
     final current = await _preferences.getString(_profileKey);
     if (current != null) return ServerProfile.fromJson(current);
@@ -270,6 +295,7 @@ class SettingsStore implements ProfileStore {
   }
 
   @override
+  /// Appends one redacted event and retains only the newest 50 entries.
   Future<void> addDiagnostic(DiagnosticEvent event) async {
     final events = await diagnostics();
     // Events intentionally contain no endpoint, user name, MAC, or secret.
@@ -282,12 +308,20 @@ class SettingsStore implements ProfileStore {
   }
 }
 
+/// Minimal network operations required by the controller.
+///
+/// Reachability intentionally means only "the configured SSH port accepts a
+/// TCP connection". It is not authentication and must not be presented as a
+/// server identity check.
 abstract class NetworkGateway {
   Future<bool> isReachable(ServerProfile profile);
   Future<void> wake(ServerProfile profile);
 }
 
+/// Socket implementation for reachability probes and Wake-on-LAN broadcasts.
 class NetworkService implements NetworkGateway {
+  /// Constructs the standard 102-byte WOL packet: six `FF` bytes followed by
+  /// the target MAC address repeated sixteen times.
   Uint8List magicPacket(MacAddress mac) {
     final packet = Uint8List(102)..fillRange(0, 6, 0xff);
     for (var repeat = 0; repeat < 16; repeat++) {
@@ -297,6 +331,8 @@ class NetworkService implements NetworkGateway {
   }
 
   @override
+  /// Performs a short TCP probe; expected timeouts and refused ports are simply
+  /// reported as offline instead of producing a user-visible exception.
   Future<bool> isReachable(ServerProfile profile) async {
     try {
       final socket = await Socket.connect(
@@ -314,6 +350,10 @@ class NetworkService implements NetworkGateway {
   }
 
   @override
+  /// Sends three WOL packets to reduce loss on a local broadcast network.
+  ///
+  /// No background retry is scheduled; the controller owns visible polling and
+  /// cancellation after this foreground action returns.
   Future<void> wake(ServerProfile profile) async {
     final wol = profile.wakeOnLan;
     if (wol == null) {
@@ -369,6 +409,10 @@ abstract class DiscoveryGateway implements NetworkScopeGateway {
 }
 
 /// Finds possible SSH endpoints only after an explicit user request.
+///
+/// Discovery is deliberately bounded and produces candidates, never trusted
+/// profiles. A candidate must still pass SSH authentication and host-key
+/// confirmation in the setup controller.
 class DiscoveryService implements DiscoveryGateway {
   DiscoveryService({NetworkInfo? networkInfo})
     : _networkInfo = networkInfo ?? NetworkInfo();
@@ -377,6 +421,8 @@ class DiscoveryService implements DiscoveryGateway {
   final LocalNetworkAccess _localAccess = LocalNetworkAccess();
 
   @override
+  /// Resolves the current Wi-Fi IPv4 scope, limiting overly broad networks to
+  /// the device's /24 slice before a scan can begin.
   Future<NetworkScope> currentScope() async {
     final ip = await _networkInfo.getWifiIP();
     final mask = await _networkInfo.getWifiSubmask();
@@ -415,6 +461,11 @@ class DiscoveryService implements DiscoveryGateway {
   }
 
   @override
+  /// Starts mDNS and bounded TCP discovery concurrently and streams results as
+  /// soon as they are validated as SSH banners.
+  ///
+  /// The stream uses an in-memory map to merge duplicate endpoint evidence;
+  /// callers may render the same endpoint repeatedly as its sources improve.
   Stream<DiscoveredServer> discover(
     NetworkScope scope, {
     required int port,
@@ -445,6 +496,8 @@ class DiscoveryService implements DiscoveryGateway {
     return controller.stream;
   }
 
+  /// Probes a bounded address range in batches instead of launching hundreds
+  /// of sockets at once. The 24-connection limit protects phones and routers.
   Future<void> _scanTcp(
     NetworkScope scope,
     int port,
@@ -476,6 +529,8 @@ class DiscoveryService implements DiscoveryGateway {
     }
   }
 
+  /// Treats an endpoint as a candidate only after it sends an SSH protocol
+  /// banner. A merely open TCP port is intentionally not sufficient.
   Future<void> _probeSsh(
     String host,
     int port,
@@ -518,6 +573,8 @@ class DiscoveryService implements DiscoveryGateway {
     }
   }
 
+  /// Queries `_ssh._tcp.local` for a short foreground window. mDNS failure is
+  /// non-fatal because a conventional TCP scan can still find a server.
   Future<void> _scanMdns(
     bool Function() cancelled,
     void Function(DiscoveredServer) emit,
@@ -577,6 +634,8 @@ class DiscoveryService implements DiscoveryGateway {
   }
 }
 
+/// Internal IPv4 helpers operate on unsigned 32-bit integer representations
+/// so range boundaries and prefix validation remain simple and testable.
 bool _isIpv4(String? value) =>
     value != null &&
     InternetAddress.tryParse(value)?.type == InternetAddressType.IPv4;
@@ -602,6 +661,10 @@ int? _prefixLength(int mask) {
   return result;
 }
 
+/// SSH operations permitted during ordinary app usage.
+///
+/// The gateway intentionally exposes no arbitrary command runner. Every
+/// command in [SshService] is a constant controlled by the application.
 abstract class SshGateway {
   Future<void> test(
     ServerProfile profile,
@@ -625,6 +688,8 @@ abstract class SshGateway {
 /// cannot accidentally gain installation capabilities. Implementations must
 /// only install [ServergyProvisioningPayload]'s fixed files.
 abstract class ServerProvisioningGateway {
+  /// Installs only the fixed helper, systemd unit, and sudoers rule after the
+  /// caller has collected a one-operation sudo password and cancellation hook.
   Future<void> provisionPoweroffHelper(
     ServerProfile profile,
     SshCredentials credentials, {
@@ -633,6 +698,8 @@ abstract class ServerProvisioningGateway {
     required bool Function() isCancelled,
   });
 
+  /// Removes precisely those three files, leaving SSH, WOL, and local profile
+  /// configuration untouched.
   Future<void> removePoweroffHelper(
     ServerProfile profile,
     SshCredentials credentials, {
@@ -642,12 +709,20 @@ abstract class ServerProvisioningGateway {
   });
 }
 
+/// Production SSH gateway that establishes host-key trust before authentication
+/// actions and runs only the app's fixed remote commands.
+///
+/// The implementation also owns the privileged provisioning session, but the
+/// separate [ServerProvisioningGateway] interface keeps that capability out of
+/// normal controller paths.
 class SshService implements SshGateway, ServerProvisioningGateway {
   SshService(this._store);
 
   final ProfileStore _store;
 
   @override
+  /// Verifies a connection with a harmless, fixed response rather than opening
+  /// an interactive shell or accepting a command from the UI.
   Future<void> test(
     ServerProfile profile,
     SshCredentials credentials, {
@@ -668,6 +743,9 @@ class SshService implements SshGateway, ServerProvisioningGateway {
   }
 
   @override
+  /// Requests shutdown through the argument-free, server-installed helper.
+  /// `sudo -n` refuses to prompt remotely; interactive sudo is reserved for
+  /// the explicit provisioning flow that supplies a password through stdin.
   Future<void> poweroff(
     ServerProfile profile,
     SshCredentials credentials, {
@@ -728,6 +806,9 @@ class SshService implements SshGateway, ServerProvisioningGateway {
       await _requireSudo(client, sudoPassword, const ['/usr/bin/id', '-u']);
       _ensureProvisioningActive(isCancelled);
 
+      // Upload into a private, random staging directory in the SSH account's
+      // home first. Privileged installation below then uses `install` with
+      // explicit ownership and mode rather than trusting SFTP metadata.
       sftp = await client.sftp();
       final home = await sftp.absolute('.');
       stagingDirectory = '$home/.servergy-provisioning-${_stagingNonce()}';
@@ -894,6 +975,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
   }
 
   @override
+  /// Inspects the active default-route interface through one fixed Linux
+  /// protocol, then validates its small textual response before proposing WOL.
   Future<WakeOnLanCandidate> inspectWakeOnLan(
     ServerProfile profile,
     SshCredentials credentials, {
@@ -927,6 +1010,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     }
   }
 
+  /// Writes a known payload with exclusive creation so an unexpected existing
+  /// staging path can never be silently overwritten.
   Future<void> _uploadStagedFile(
     SftpClient sftp,
     String path,
@@ -946,6 +1031,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     }
   }
 
+  /// Runs a fixed administrator command and maps raw stderr to a redacted,
+  /// actionable [ServergyError] before it can leave this infrastructure layer.
   Future<_SshCommandResult> _requireSudo(
     SSHClient client,
     String password,
@@ -959,6 +1046,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
         : _provisioningFailure(result.stderr);
   }
 
+  /// Executes a quoted fixed command, delivering the temporary sudo password
+  /// over stdin. It returns output only to internal error classification.
   Future<_SshCommandResult> _runSudo(
     SSHClient client,
     String password,
@@ -1005,6 +1094,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     }
   }
 
+  /// Defends against incomplete installation: check hashes and file modes
+  /// before the sudoers rule makes the shutdown helper accessible.
   Future<void> _verifyInstalledPayload(
     SSHClient client,
     String password,
@@ -1042,6 +1133,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     }
   }
 
+  /// Best-effort cleanup that never masks the more important installation
+  /// result. The directory contains no credentials, only static payloads.
   Future<void> _removeStaging(SftpClient sftp, String directory) async {
     // Cleanup must not hide the original installation result. A disconnected
     // server is reported as a partial installation rather than as success.
@@ -1055,6 +1148,7 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     } catch (_) {}
   }
 
+  /// Makes cancellation cooperative between irreversible remote steps.
   void _ensureProvisioningActive(bool Function() isCancelled) {
     if (isCancelled()) {
       throw const ServergyError(
@@ -1064,6 +1158,10 @@ class SshService implements SshGateway, ServerProvisioningGateway {
     }
   }
 
+  /// Connects, authenticates, and enforces host-key continuity for one profile.
+  ///
+  /// The callback is reached only on first trust. A stored key mismatch throws
+  /// before authentication succeeds, which blocks a possible changed endpoint.
   Future<SSHClient> _connect(
     ServerProfile profile,
     SshCredentials credentials,
@@ -1129,6 +1227,8 @@ class SshService implements SshGateway, ServerProvisioningGateway {
   }
 }
 
+/// Internal result type. Raw stdout/stderr is intentionally confined to this
+/// file so it cannot accidentally reach widgets, persistence, or diagnostics.
 class _SshCommandResult {
   const _SshCommandResult({
     required this.exitCode,
@@ -1141,13 +1241,16 @@ class _SshCommandResult {
   final String stderr;
 }
 
+/// POSIX single-quote escaping for fixed command arguments and internal paths.
 String _shellQuote(String value) => "'${value.replaceAll("'", "'\\\"'\\\"'")}'";
 
+/// Cryptographically random directory suffix used to avoid staging collisions.
 String _stagingNonce() => List<String>.generate(
   16,
   (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
 ).join();
 
+/// Converts sensitive server stderr into limited, user-actionable categories.
 ServergyError _provisioningFailure(String stderr) {
   final output = stderr.toLowerCase();
   if (output.contains('sorry, try again') ||
@@ -1190,6 +1293,8 @@ ServergyError _provisioningFailure(String stderr) {
   );
 }
 
+/// Removal has distinct wording because partial removal requires a different
+/// recovery action from failed installation.
 ServergyError _removalFailure(String stderr) {
   final output = stderr.toLowerCase();
   if (output.contains('sorry, try again') ||
@@ -1220,6 +1325,7 @@ ServergyError _removalFailure(String stderr) {
   );
 }
 
+/// Runs key parsing in [compute] so expensive PEM decoding does not block UI.
 List<SSHKeyPair> _decodeKeys(({String pem, String? passphrase}) input) =>
     SSHKeyPair.fromPem(input.pem, input.passphrase);
 
@@ -1271,6 +1377,8 @@ ServergyError _poweroffFailure({
   );
 }
 
+// Fixed remote protocol: it identifies the default-route adapter and emits a
+// tab-separated, versioned payload that [parseWakeOnLanInspection] validates.
 const _wakeOnLanInspectCommand = r'''set -eu
 iface=$(/usr/sbin/ip -o route show default | awk 'NR == 1 { for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }')
 test -n "$iface"

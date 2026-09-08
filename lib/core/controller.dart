@@ -9,14 +9,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
 import 'services.dart';
 
+// Controllers translate explicit UI intent into gateway calls and immutable
+// state transitions. They contain timing, cancellation, and error mapping;
+// widgets render state but do not perform I/O themselves.
+
+/// Riverpod entry point for the single configured server and power actions.
 final controllerProvider = NotifierProvider<ServerController, AppState>(
   ServerController.new,
 );
 
+/// Independent entry point for setup discovery so scanning never makes the
+/// dashboard's start/shutdown controls appear busy.
 final discoveryProvider = NotifierProvider<DiscoveryController, DiscoveryState>(
   DiscoveryController.new,
 );
 
+/// Lifecycle for one foreground discovery run.
 enum DiscoveryStatus {
   idle,
   preparing,
@@ -26,6 +34,7 @@ enum DiscoveryStatus {
   failed,
 }
 
+/// Immutable discovery progress and ephemeral candidate list.
 class DiscoveryState {
   const DiscoveryState({
     this.status = DiscoveryStatus.idle,
@@ -57,6 +66,10 @@ class DiscoveryController extends Notifier<DiscoveryState> {
   @override
   DiscoveryState build() => const DiscoveryState();
 
+  /// Resolves network scope, then forwards streaming candidates into state.
+  ///
+  /// `_run` is a cancellation generation: a delayed result from a cancelled
+  /// scan cannot overwrite the current state or revive its progress UI.
   Future<void> search(int port) async {
     if (state.isSearching) return;
     final token = ++_run;
@@ -111,6 +124,8 @@ class DiscoveryController extends Notifier<DiscoveryState> {
     }
   }
 
+  /// Invalidates the active scan but retains already found candidates for the
+  /// user to choose from.
   void cancel() {
     if (!state.isSearching) return;
     _run++;
@@ -124,6 +139,10 @@ class DiscoveryController extends Notifier<DiscoveryState> {
   bool _active(int token) => ref.mounted && token == _run;
 }
 
+/// Complete, immutable UI state for the configured-server controller.
+///
+/// Notice/error strings are transient; diagnostics are the durable redacted
+/// history. `busy` serializes destructive or long-running operations.
 class AppState {
   const AppState({
     this.profile,
@@ -168,14 +187,27 @@ class AppState {
   );
 }
 
+/// UI callback used only when an operation needs a password or key passphrase.
+/// It returns short-lived [SshCredentials], never writes to storage itself.
 typedef CredentialPrompter =
     Future<SshCredentials?> Function(CredentialRequest request);
+
+/// UI callback for an explicit first-contact SSH identity decision.
 typedef HostKeyPrompter = Future<bool> Function(String fingerprint);
+
+/// UI callback for the one-operation administrator password during setup.
 typedef SudoPasswordPrompter = Future<String?> Function();
 
+/// The two secret prompts that an SSH workflow may request.
 enum CredentialRequest { password, keyPassphrase }
 
-/// Coordinates operations and makes all blocking I/O replaceable in tests.
+/// Coordinates user-triggered server actions and makes all blocking I/O
+/// replaceable in tests.
+///
+/// Important invariant: each long-running action receives an incrementing
+/// `_operation` token. Every completion checks that token before changing
+/// state, so cancelling or starting a later action cannot be undone by an old
+/// socket response or polling timer.
 class ServerController extends Notifier<AppState> {
   ServerController({
     ProfileStore? store,
@@ -213,11 +245,14 @@ class ServerController extends Notifier<AppState> {
   String? get lastNotice => state.error ?? state.message;
 
   @override
+  /// Starts asynchronous state restoration after Riverpod has an initial state.
+  /// `unawaited` is intentional: Notifier.build must return synchronously.
   AppState build() {
     unawaited(_load());
     return const AppState();
   }
 
+  /// Restores the profile and redacted events, then performs a normal refresh.
   Future<void> _load() async {
     final watch = Stopwatch()..start();
     final profile = await _store.loadProfile();
@@ -228,6 +263,10 @@ class ServerController extends Notifier<AppState> {
     if (profile != null) await refresh();
   }
 
+  /// Saves an already-validated profile outside the setup verification flow.
+  ///
+  /// Password-mode profiles must have a stored password; key mode actively
+  /// removes an obsolete password so authentication modes cannot overlap.
   Future<void> saveProfile(
     ServerProfile profile, {
     SecretUpdate passwordUpdate = const SecretUpdate.keep(),
@@ -265,6 +304,8 @@ class ServerController extends Notifier<AppState> {
 
   /// Deletes the single configured server without touching the redacted local
   /// diagnostics. The caller has to ask for confirmation before invoking it.
+  /// Deletes local public and secret connection data after UI confirmation.
+  /// Diagnostics survive by design because their schema is redacted.
   Future<bool> deleteConnection() async {
     if (state.profile == null || state.busy) return false;
     final watch = Stopwatch()..start();
@@ -399,6 +440,8 @@ class ServerController extends Notifier<AppState> {
   }
 
   /// Updates only the optional WOL part of an already verified profile.
+  /// Replaces or removes only WOL configuration while retaining SSH secrets and
+  /// host-key trust for the same endpoint.
   Future<bool> saveWakeOnLanSettings(WakeOnLanSettings? settings) async {
     final profile = state.profile;
     if (profile == null || state.busy) return false;
@@ -440,6 +483,8 @@ class ServerController extends Notifier<AppState> {
   /// This prevents a mistyped first password from becoming the saved state. The
   /// host-key callback remains user-controlled, so a discovered IP can never
   /// silently become a trusted server.
+  /// The setup commit boundary: first test the draft connection, then persist
+  /// its profile and secret updates only after SSH identity is accepted.
   Future<bool> verifyAndSave(
     ServerProfile profile, {
     required SecretUpdate passwordUpdate,
@@ -521,6 +566,8 @@ class ServerController extends Notifier<AppState> {
     }
   }
 
+  /// Persists public settings before the secret update. Callers invoke this
+  /// only after a successful SSH test; it never obtains or displays secrets.
   Future<void> _persistProfile(
     ServerProfile profile, {
     required SecretUpdate passwordUpdate,
@@ -535,6 +582,8 @@ class ServerController extends Notifier<AppState> {
     if (privateKeyPem != null) await _store.savePrivateKey(privateKeyPem);
   }
 
+  /// Refreshes only TCP reachability. It deliberately performs no SSH login,
+  /// user prompt, background retry, or host-key interaction.
   Future<void> refresh() async {
     final profile = state.profile;
     if (profile == null || state.busy) return;
@@ -568,6 +617,9 @@ class ServerController extends Notifier<AppState> {
     );
   }
 
+  /// Cancels controller-owned polling and prevents all stale completions.
+  /// It cannot cancel an in-flight OS socket immediately, so token checks are
+  /// required at every async boundary as well.
   void cancelOperation() {
     if (!state.busy) return;
     _operation++;
@@ -579,6 +631,9 @@ class ServerController extends Notifier<AppState> {
     );
   }
 
+  /// Sends WOL only when SSH is offline, then visibly polls up to 90 seconds.
+  /// The server might boot more slowly; the user can cancel and retry rather
+  /// than the app continuing a hidden background operation.
   Future<void> wake() async {
     final profile = state.profile;
     if (profile == null || state.busy) return;
@@ -641,6 +696,7 @@ class ServerController extends Notifier<AppState> {
     }
   }
 
+  /// Runs the fixed harmless SSH test via the shared SSH action workflow.
   Future<void> testSsh(CredentialPrompter credentials, HostKeyPrompter trust) =>
       _sshAction(false, credentials, trust);
 
@@ -867,11 +923,18 @@ class ServerController extends Notifier<AppState> {
     }
   }
 
+  /// Initiates the fixed server-side shutdown helper and polls up to 60 seconds
+  /// for SSH to become unreachable.
   Future<void> shutdown(
     CredentialPrompter credentials,
     HostKeyPrompter trust,
   ) => _sshAction(true, credentials, trust);
 
+  /// Shared implementation for SSH testing and shutdown.
+  ///
+  /// Authentication is fetched only after the local-network permission and
+  /// offline short-circuit. The remote service remains responsible for
+  /// host-key verification and never accepts a UI-provided shell command.
   Future<void> _sshAction(
     bool shutdown,
     CredentialPrompter prompt,
@@ -982,6 +1045,8 @@ class ServerController extends Notifier<AppState> {
     }
   }
 
+  /// Obtains persisted credentials for an existing profile. Encrypted key
+  /// passphrases are prompted per operation and never saved.
   Future<SshCredentials?> _readCredentials(
     ServerProfile profile,
     CredentialPrompter prompt,
@@ -1013,6 +1078,8 @@ class ServerController extends Notifier<AppState> {
     );
   }
 
+  /// Builds credentials for a setup draft, preferring values entered in the
+  /// current form over secure-store values that have not yet been replaced.
   Future<SshCredentials?> _draftCredentials(
     ServerProfile profile, {
     required SecretUpdate passwordUpdate,
@@ -1048,8 +1115,10 @@ class ServerController extends Notifier<AppState> {
     return SshCredentials(privateKeyPem: key, keyPassphrase: passphrase);
   }
 
+  /// Central guard for every asynchronous completion that can mutate state.
   bool _active(int token) => ref.mounted && token == _operation;
 
+  /// Finalizes a successful, still-current operation and clears stale errors.
   void _complete(int token, ServerStatus status, String message) {
     if (!_active(token)) return;
     state = state.copyWith(
@@ -1061,9 +1130,11 @@ class ServerController extends Notifier<AppState> {
     );
   }
 
+  /// Consumes transient UI feedback once the foreground route displayed it.
   void clearNotice() =>
       state = state.copyWith(clearMessage: true, clearError: true);
 
+  /// Moves the controller out of busy state and records only the safe code.
   void _fail(ServergyError error, DiagnosticAction action, Duration elapsed) {
     state = state.copyWith(
       busy: false,
@@ -1074,6 +1145,8 @@ class ServerController extends Notifier<AppState> {
     unawaited(_record(action, false, error.code, elapsed));
   }
 
+  /// Persists then reloads redacted diagnostics so widgets receive a canonical
+  /// list; mount checks prevent a disposed notifier from being updated late.
   Future<void> _record(
     DiagnosticAction action,
     bool success,

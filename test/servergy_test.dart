@@ -11,6 +11,9 @@ import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
 import 'package:servergy/servergy_app.dart';
 
+// Domain and widget regression suite. Network/SSH behavior is tested through
+// pure parsers, fakes, and widget providers; no test requires a homeserver.
+
 void main() {
   test('builds the standard 102 byte Wake-on-LAN packet', () {
     final mac = MacAddress.parse('AA:BB:CC:DD:EE:FF');

@@ -314,6 +314,7 @@ dem Hochladen noch einmal durch.
 | [Release-Readiness](docs/release-readiness.md) | Realtest-Matrix, Signaturen, Release-Gates und Feedback-Regeln |
 | [Serveranleitung](docs/server-setup.md) | Wake-on-LAN, SSH-Benutzer, eingeschränkter sudoers-Helper und manueller Fallback |
 | [Architektur](docs/architecture.md) | Datenfluss, Komponenten, Grenzen und Sicherheitsentscheidungen |
+| [Codekarte](docs/code-guide.md) | Zuständigkeiten je Datei, Sicherheitsinvarianten und sichere Erweiterungsschritte |
 | [Entwicklung & Tests](docs/development.md) | Lokale Entwicklungsumgebung, Builds, Qualität und Realgeräte-Tests |
 | [Datenschutz](docs/privacy.md) | Lokale Datenverarbeitung und redigierte Diagnoseexporte |
 | [Release-Checkliste](docs/release-checklist.md) | Letzte Prüfungen vor einem stabilen oder vorab gekennzeichneten Release |

@@ -9,6 +9,10 @@ import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
 import 'package:servergy/servergy_app.dart';
 
+// Widget-level contract suite for the user-facing flows. Provider overrides
+// supply deterministic state so these tests verify interaction, accessibility,
+// localization, and route behavior without invoking the real service layer.
+
 void main() {
   const candidate = DiscoveredServer(
     host: '192.168.0.241',

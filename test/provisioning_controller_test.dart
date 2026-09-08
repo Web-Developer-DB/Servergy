@@ -4,6 +4,10 @@ import 'package:servergy/core/controller.dart';
 import 'package:servergy/core/models.dart';
 import 'package:servergy/core/services.dart';
 
+// These tests pin the privileged-flow contract: validate SSH identity first,
+// pass a sudo password only to the provisioning gateway, and do not mutate the
+// local profile while installing/removing remote helper files.
+
 void main() {
   test(
     'provisioning verifies SSH before it passes a temporary sudo password',
@@ -100,6 +104,7 @@ void main() {
   );
 }
 
+/// Common profile fixture for focused provisioning-controller tests.
 const _profile = ServerProfile(
   name: 'Homeserver',
   host: '192.168.0.10',
@@ -108,6 +113,7 @@ const _profile = ServerProfile(
   authenticationMode: AuthenticationMode.passwordOnly,
 );
 
+/// Avoids asynchronous app startup so each test owns all relevant state.
 class _ProvisioningController extends ServerController {
   _ProvisioningController({
     required ProfileStore store,
@@ -118,6 +124,7 @@ class _ProvisioningController extends ServerController {
   AppState build() => const AppState(profile: _profile);
 }
 
+/// Combined fake makes call ordering and temporary-password handoff visible.
 class _FakeProvisioningSsh implements SshGateway, ServerProvisioningGateway {
   var testCalls = 0;
   var provisionCalls = 0;
@@ -176,6 +183,7 @@ class _FakeProvisioningSsh implements SshGateway, ServerProvisioningGateway {
   }) => throw UnimplementedError();
 }
 
+/// Minimal secret-aware memory store for controller-level workflow tests.
 class _MemoryStore implements ProfileStore {
   _MemoryStore({String? password}) : _storedPassword = password;
 
