@@ -182,8 +182,7 @@ installierst.
 | Plattform | Release-Artefakt | Start |
 | --- | --- | --- |
 | 🤖 **Android 12+** | Signiertes APK | APK aus dem GitHub-Release installieren und die lokale Netzwerkfreigabe bei Bedarf bewusst erlauben. |
-| 🐧 **Linux** | Nutzer-Bundle (`.tar.gz`) | Archiv entpacken, `./install-linux.sh` ausführen und Servergy anschließend über das Anwendungsmenü starten. Die Installation bleibt unter `~/.local/share/servergy`. |
-| 🪟 **Windows 11** | Signiertes ZIP | ZIP entpacken, Windows-Signatur prüfen und `servergy.exe` starten. |
+| 🐧 **Linux x86_64** | AppImage | AppImage aus dem GitHub-Release herunterladen, ausführbar machen und direkt starten. Es verändert keine Systemverzeichnisse. |
 
 > [!NOTE]
 > Ein echter Wake-on-LAN-Test benötigt ein passendes Heimnetz. Android-Emulatoren

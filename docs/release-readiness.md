@@ -12,8 +12,8 @@ Vor dem Tag `v0.1.0` müssen erfolgreich sein:
 - `flutter analyze`
 - `flutter test`
 - der reproduzierbare Icon-Generator ohne Git-Diff
-- Android-, Linux- und Windows-Release-Builds
-- signierte Android- und Windows-Artefakte, Linux-Bundle und SHA-256-Summen
+- Android-Release-Build und Linux-x86_64-AppImage
+- signierte Android-APK, Linux-AppImage und SHA-256-Summen
 
 Der Release-Workflow akzeptiert sowohl stabile SemVer-Tags als auch spätere
 Prereleases und setzt den GitHub-Pre-Release-Status automatisch aus der
@@ -25,8 +25,7 @@ Paketversion.
 | --- | --- | --- | --- |
 | Android | Android 12 oder neuer | Einrichtung mit SSH-Schlüssel und Passwort, Discovery, Host-Key-Wechsel, Diagnoseexport, Darstellung System/Hell/Dunkel | offen |
 | Android | Android 17 / API 37 | LAN-Freigabe akzeptiert und abgelehnt, mDNS/Scan, WOL, Shutdown, Darstellung | offen |
-| Linux | Ubuntu 24.04 LTS, GNOME, Secret Service | Nutzer-Installer, neues Startmenü-Icon, Darstellung, Speicherung, SSH, WOL, Shutdown, Diagnoseexport, Uninstall | offen |
-| Windows | Windows 11 | Signatur, neues Produkt-Icon, Darstellung, Speicherung, SSH, WOL, Shutdown, Diagnoseexport, Uninstall | offen |
+| Linux | Ubuntu 24.04 LTS, GNOME, Secret Service | AppImage-Start, Darstellung, Speicherung, SSH, WOL, Shutdown und Diagnoseexport | offen |
 | VPN | eine getestete VPN-Verbindung | SSH über VPN ohne WOL-Broadcast; verständliche Einschränkung im UI | offen |
 
 Bei jedem erfolgreichen WOL- und Shutdown-Test werden Servermodell,
@@ -45,6 +44,7 @@ hochgeladen werden.
 
 `v0.1.0` wird erst veröffentlicht, wenn alle automatischen Gates grün sind, die
 Realtest-Matrix keine blockierenden Fehler enthält und die produktiven
-Signatursecrets in GitHub verfügbar sind. Lokale Debug-APKs sind ausschließlich
-für Entwicklung und Geräteprüfungen geeignet; der Android-Release-Build
-verweigert ohne Produktionskeystore bewusst die Erstellung.
+Android-Signatursecrets in GitHub verfügbar sind. Lokale Debug-APKs sind
+ausschließlich für Entwicklung und Geräteprüfungen geeignet; der
+Android-Release-Build verweigert ohne Produktionskeystore bewusst die
+Erstellung.
