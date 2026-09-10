@@ -8,7 +8,7 @@ BUILD_DIR="$PROJECT_DIR/build/linux/x64/release"
 BUNDLE_DIR="$BUILD_DIR/bundle"
 APPDIR="$BUILD_DIR/Servergy.AppDir"
 DIST_DIR="$PROJECT_DIR/dist"
-VERSION=$(sed -n 's/^version: \([0-9][0-9.]*\).*/\1/p' "$PROJECT_DIR/pubspec.yaml" | head -n 1)
+VERSION=$(sed -n 's/^version: \([0-9][0-9A-Za-z.-]*\)+[0-9][0-9]*$/\1/p' "$PROJECT_DIR/pubspec.yaml" | head -n 1)
 ARCH=$(uname -m)
 APPIMAGETOOL=${APPIMAGETOOL:-appimagetool}
 
@@ -62,6 +62,6 @@ chmod +x "$APPDIR/AppRun"
 mkdir -p "$DIST_DIR"
 OUTPUT="$DIST_DIR/Servergy-${VERSION}-${ARCH}.AppImage"
 rm -f "$OUTPUT"
-ARCH="$ARCH" "$APPIMAGETOOL" "$APPDIR" "$OUTPUT"
+VERSION="$VERSION" ARCH="$ARCH" "$APPIMAGETOOL" "$APPDIR" "$OUTPUT"
 
 echo "AppImage erstellt: $OUTPUT"

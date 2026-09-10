@@ -177,8 +177,7 @@ installing an artifact.
 | Platform | Release artifact | Start |
 | --- | --- | --- |
 | 🤖 **Android 12+** | Signed APK | Install the APK from the GitHub release and consciously grant local-network access if requested. |
-| 🐧 **Linux** | User bundle (`.tar.gz`) | Extract the archive, run `./install-linux.sh`, then start Servergy from the application menu. The installation stays under `~/.local/share/servergy`. |
-| 🪟 **Windows 11** | Signed ZIP | Extract the ZIP, verify the Windows signature, and start `servergy.exe`. |
+| 🐧 **Linux x86_64** | AppImage | Download the AppImage from the GitHub release, make it executable, then run it directly. It does not modify system directories. |
 
 > [!NOTE]
 > A real Wake-on-LAN test requires a suitable home network. Android emulators

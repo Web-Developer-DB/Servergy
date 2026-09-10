@@ -1,12 +1,12 @@
 # Release-Checkliste
 
 - [ ] Paketversion `X.Y.Z+BUILD` und Git-Tag `vX.Y.Z` stimmen überein; für
-      Servergy 0.1.0 ist die Paketversion `0.1.0+7`.
+      Servergy 0.1.0 ist die Paketversion `0.1.0+8` und der Tag `v0.1.0`.
 - [ ] `flutter analyze` und `flutter test` sind erfolgreich.
-- [ ] Android-, Linux- und Windows-Release-Build erfolgreich erstellt; der
-      Launchername und das Servergy-Icon sind auf jeder Plattform sichtbar.
+- [ ] Android-Release-Build und Linux-x86_64-AppImage erfolgreich erstellt;
+      App-Name und Servergy-Icon sind auf beiden Plattformen sichtbar.
 - [ ] Android-APK ist mit dem produktiven Keystore signiert.
-- [ ] Windows-Bundle ist mit dem produktiven Zertifikat signiert.
+- [ ] Linux-AppImage startet auf einem unterstützten Linux-Desktop.
 - [ ] SHA-256-Prüfsummen aller Release-Dateien erzeugt und geprüft.
 - [ ] Die vollständigen Realtest-Protokolle aus
       `docs/release-readiness.md` für Android 12+
