@@ -65,7 +65,7 @@ dev_dependencies:
   mocktail: ^1.0.4
   # Deterministically generates all launcher-icon rasters from the approved
   # Servergy brand lockup. It is not bundled with the application.
-  image: ^4.9.2
+  image: ^4.10.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
