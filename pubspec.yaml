@@ -39,7 +39,7 @@ dependencies:
   shared_preferences: ^2.5.4
   file_picker: ^12.1.1
   package_info_plus: ^10.2.1
-  url_launcher: ^6.3.2
+  url_launcher: ^6.3.3
   # Reads the active local IPv4 network on Android, Linux, and Windows.
   network_info_plus: ^8.2.1
   # Queries only locally advertised services such as _ssh._tcp.local.
